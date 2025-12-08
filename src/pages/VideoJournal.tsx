@@ -1,0 +1,412 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import {
+  Video,
+  Mic,
+  Play,
+  Pause,
+  Square,
+  Trash2,
+  Calendar,
+  Clock,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Recording {
+  id: string;
+  type: 'video' | 'audio';
+  date: string;
+  duration: number;
+  url: string;
+  thumbnail?: string;
+}
+
+// Mock recordings - to be replaced with real data
+const MOCK_RECORDINGS: Recording[] = [
+  {
+    id: '1',
+    type: 'video',
+    date: '2024-12-08',
+    duration: 45,
+    url: '',
+    thumbnail: '',
+  },
+  {
+    id: '2',
+    type: 'audio',
+    date: '2024-12-07',
+    duration: 30,
+    url: '',
+  },
+  {
+    id: '3',
+    type: 'video',
+    date: '2024-12-06',
+    duration: 58,
+    url: '',
+    thumbnail: '',
+  },
+];
+
+const VideoJournal: React.FC = () => {
+  const { language } = useLanguage();
+  
+  const [recordings, setRecordings] = useState<Recording[]>(MOCK_RECORDINGS);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingType, setRecordingType] = useState<'video' | 'audio' | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  const MAX_DURATION = 60; // 60 seconds max
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const startRecording = async (type: 'video' | 'audio') => {
+    try {
+      const constraints = type === 'video'
+        ? { video: true, audio: true }
+        : { audio: true };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      if (type === 'video' && videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+        videoPreviewRef.current.play();
+      }
+
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, {
+          type: type === 'video' ? 'video/webm' : 'audio/webm',
+        });
+        const url = URL.createObjectURL(blob);
+
+        const newRecording: Recording = {
+          id: Date.now().toString(),
+          type,
+          date: new Date().toISOString().split('T')[0],
+          duration: recordingTime,
+          url,
+        };
+
+        setRecordings(prev => [newRecording, ...prev]);
+        toast.success(
+          language === 'fr'
+            ? 'Enregistrement sauvegardé!'
+            : 'Recording saved!'
+        );
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingType(type);
+      setRecordingTime(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= MAX_DURATION - 1) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast.error(
+        language === 'fr'
+          ? 'Erreur d\'accès à la caméra/micro'
+          : 'Error accessing camera/microphone'
+      );
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null;
+    }
+
+    setIsRecording(false);
+    setRecordingType(null);
+  };
+
+  const deleteRecording = (id: string) => {
+    setRecordings(prev => prev.filter(r => r.id !== id));
+    toast.success(
+      language === 'fr'
+        ? 'Enregistrement supprimé'
+        : 'Recording deleted'
+    );
+  };
+
+  const togglePlayback = (id: string) => {
+    setPlayingId(prev => prev === id ? null : id);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString(
+      language === 'fr' ? 'fr-FR' : 'en-US',
+      { weekday: 'short', day: 'numeric', month: 'short' }
+    );
+  };
+
+  return (
+    <div className="py-4 max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+            {language === 'fr' ? 'Journal Vidéo/Audio' : 'Video/Audio Journal'}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {language === 'fr' ? 'Enregistrez votre ressenti du jour (max 60s)' : 'Record your daily feelings (max 60s)'}
+          </p>
+        </div>
+        <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
+          <Video className="w-6 h-6 text-primary-foreground" />
+        </div>
+      </div>
+
+      {/* Recording Section */}
+      <div className="glass-card p-6 animate-fade-in">
+        <h3 className="font-display font-semibold text-foreground mb-6">
+          {language === 'fr' ? 'Nouvel Enregistrement' : 'New Recording'}
+        </h3>
+
+        {/* Video Preview */}
+        {recordingType === 'video' && (
+          <div className="mb-6 rounded-lg overflow-hidden bg-black aspect-video max-w-md mx-auto">
+            <video
+              ref={videoPreviewRef}
+              className="w-full h-full object-cover"
+              muted
+              playsInline
+            />
+          </div>
+        )}
+
+        {/* Recording Timer */}
+        {isRecording && (
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-loss/20 border border-loss/30">
+              <div className="w-3 h-3 rounded-full bg-loss animate-pulse" />
+              <span className="font-display text-xl font-bold text-loss">
+                {formatDuration(recordingTime)}
+              </span>
+              <span className="text-sm text-muted-foreground">/ {formatDuration(MAX_DURATION)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Recording Progress Bar */}
+        {isRecording && (
+          <div className="w-full max-w-md mx-auto mb-6">
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-loss transition-all duration-1000"
+                style={{ width: `${(recordingTime / MAX_DURATION) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Recording Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          {!isRecording ? (
+            <>
+              <Button
+                size="lg"
+                className="gap-3 w-full sm:w-auto bg-primary hover:bg-primary/90"
+                onClick={() => startRecording('video')}
+              >
+                <Video className="w-5 h-5" />
+                {language === 'fr' ? 'Enregistrer Vidéo' : 'Record Video'}
+              </Button>
+
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-3 w-full sm:w-auto"
+                onClick={() => startRecording('audio')}
+              >
+                <Mic className="w-5 h-5" />
+                {language === 'fr' ? 'Enregistrer Audio' : 'Record Audio'}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="destructive"
+              size="lg"
+              className="gap-3"
+              onClick={stopRecording}
+            >
+              <Square className="w-5 h-5" />
+              {language === 'fr' ? 'Arrêter l\'enregistrement' : 'Stop Recording'}
+            </Button>
+          )}
+        </div>
+
+        {/* Audio Waveform Visualization (when recording audio) */}
+        {isRecording && recordingType === 'audio' && (
+          <div className="flex items-center justify-center gap-1 h-16 mt-6">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className="w-1 bg-primary rounded-full animate-pulse"
+                style={{
+                  height: `${20 + Math.random() * 40}px`,
+                  animationDelay: `${i * 50}ms`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recordings List */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '100ms' }}>
+        <h3 className="font-display font-semibold text-foreground mb-6">
+          {language === 'fr' ? 'Mes Enregistrements' : 'My Recordings'}
+          <span className="text-sm font-normal text-muted-foreground ml-2">
+            ({recordings.length})
+          </span>
+        </h3>
+
+        {recordings.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Video className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>{language === 'fr' ? 'Aucun enregistrement' : 'No recordings yet'}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {recordings.map((recording, index) => (
+              <div
+                key={recording.id}
+                className={cn(
+                  "flex items-center gap-4 p-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors animate-fade-in",
+                )}
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                {/* Icon */}
+                <div className={cn(
+                  "w-12 h-12 rounded-lg flex items-center justify-center",
+                  recording.type === 'video' ? "bg-primary/20" : "bg-profit/20"
+                )}>
+                  {recording.type === 'video' ? (
+                    <Video className="w-6 h-6 text-primary" />
+                  ) : (
+                    <Mic className="w-6 h-6 text-profit" />
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">
+                    {recording.type === 'video'
+                      ? (language === 'fr' ? 'Vidéo' : 'Video')
+                      : 'Audio'}
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {formatDate(recording.date)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatDuration(recording.duration)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => togglePlayback(recording.id)}
+                    className="hover:bg-primary/20"
+                  >
+                    {playingId === recording.id ? (
+                      <Pause className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Play className="w-5 h-5 text-primary" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteRecording(recording.id)}
+                    className="hover:bg-loss/20 text-muted-foreground hover:text-loss"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tips */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
+        <h3 className="font-display font-semibold text-foreground mb-4">
+          💡 {language === 'fr' ? 'Conseils' : 'Tips'}
+        </h3>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>• {language === 'fr' ? 'Parlez de votre état émotionnel avant et après la session de trading' : 'Talk about your emotional state before and after the trading session'}</p>
+          <p>• {language === 'fr' ? 'Mentionnez les leçons apprises du jour' : 'Mention the lessons learned today'}</p>
+          <p>• {language === 'fr' ? 'Notez les erreurs à éviter pour demain' : 'Note the mistakes to avoid for tomorrow'}</p>
+          <p>• {language === 'fr' ? 'Durée maximale: 60 secondes par enregistrement' : 'Maximum duration: 60 seconds per recording'}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VideoJournal;
