@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
   Trophy,
   Target,
@@ -15,6 +22,7 @@ import {
   Award,
   CheckCircle2,
   Lock,
+  Sparkles,
 } from 'lucide-react';
 
 interface Challenge {
@@ -147,7 +155,7 @@ const USER_LEVELS = [
 ];
 
 const Challenges: React.FC = () => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
 
   // Mock user data
   const userPoints = 450;
@@ -160,6 +168,16 @@ const Challenges: React.FC = () => {
     : 100;
 
   const completedChallenges = CHALLENGES.filter(c => c.completed).length;
+
+  // Challenge completion popup state
+  const [showCongrats, setShowCongrats] = useState(false);
+  const [completedChallenge, setCompletedChallenge] = useState<Challenge | null>(null);
+
+  // Simulate completing a challenge (in real app, this would be triggered by actual completion)
+  const handleChallengeComplete = (challenge: Challenge) => {
+    setCompletedChallenge(challenge);
+    setShowCongrats(true);
+  };
 
   const difficultyColors = {
     easy: 'bg-profit/20 text-profit border-profit/30',
@@ -177,6 +195,39 @@ const Challenges: React.FC = () => {
 
   return (
     <div className="py-4 space-y-6">
+      {/* Congratulations Popup */}
+      <Dialog open={showCongrats} onOpenChange={setShowCongrats}>
+        <DialogContent className="bg-background border-border text-center max-w-md">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center animate-pulse-neon">
+                <Sparkles className="w-10 h-10 text-primary-foreground" />
+              </div>
+            </div>
+            <DialogTitle className="text-2xl font-display text-center">
+              🎉 {language === 'fr' ? 'Bravo!' : 'Congratulations!'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-lg text-foreground mb-2">
+              {language === 'fr' ? 'Vous avez atteint' : 'You have achieved'}:
+            </p>
+            <p className="text-xl font-display font-bold text-primary mb-4">
+              {completedChallenge?.title}
+            </p>
+            <p className="text-muted-foreground">
+              {completedChallenge?.reward}
+            </p>
+          </div>
+          <Button
+            onClick={() => setShowCongrats(false)}
+            className="w-full bg-gradient-primary hover:opacity-90 font-display"
+          >
+            {language === 'fr' ? 'Continuer!' : 'Continue!'}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -184,7 +235,7 @@ const Challenges: React.FC = () => {
             {t('challenges')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Relevez des défis et montez en niveau
+            {language === 'fr' ? 'Relevez des défis et montez en niveau' : 'Take on challenges and level up'}
           </p>
         </div>
         <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
