@@ -14,7 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          id: string
+          level: number | null
+          monthly_objective_profit: number | null
+          nickname: string
+          total_points: number | null
+          trading_style: string | null
+          updated_at: string
+          user_id: string
+          weekly_objective_trades: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          level?: number | null
+          monthly_objective_profit?: number | null
+          nickname: string
+          total_points?: number | null
+          trading_style?: string | null
+          updated_at?: string
+          user_id: string
+          weekly_objective_trades?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          level?: number | null
+          monthly_objective_profit?: number | null
+          nickname?: string
+          total_points?: number | null
+          trading_style?: string | null
+          updated_at?: string
+          user_id?: string
+          weekly_objective_trades?: number | null
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          asset: string
+          created_at: string
+          custom_setup: string | null
+          direction: string
+          emotions: string | null
+          entry_price: number
+          exit_price: number | null
+          id: string
+          images: string[] | null
+          lot_size: number
+          notes: string | null
+          profit_loss: number | null
+          result: string | null
+          setup: string | null
+          stop_loss: number | null
+          take_profit: number | null
+          trade_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset: string
+          created_at?: string
+          custom_setup?: string | null
+          direction: string
+          emotions?: string | null
+          entry_price: number
+          exit_price?: number | null
+          id?: string
+          images?: string[] | null
+          lot_size: number
+          notes?: string | null
+          profit_loss?: number | null
+          result?: string | null
+          setup?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          trade_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset?: string
+          created_at?: string
+          custom_setup?: string | null
+          direction?: string
+          emotions?: string | null
+          entry_price?: number
+          exit_price?: number | null
+          id?: string
+          images?: string[] | null
+          lot_size?: number
+          notes?: string | null
+          profit_loss?: number | null
+          result?: string | null
+          setup?: string | null
+          stop_loss?: number | null
+          take_profit?: number | null
+          trade_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_challenges: {
+        Row: {
+          challenge_id: string
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          points_earned: number | null
+          progress: number | null
+          target: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          progress?: number | null
+          target: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          points_earned?: number | null
+          progress?: number | null
+          target?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

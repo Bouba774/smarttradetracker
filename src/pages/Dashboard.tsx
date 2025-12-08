@@ -1,5 +1,7 @@
 import React from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChallenges } from '@/hooks/useChallenges';
 import StatCard from '@/components/ui/StatCard';
 import GaugeChart from '@/components/ui/GaugeChart';
 import {
@@ -35,7 +37,9 @@ import {
 } from 'recharts';
 
 const Dashboard: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { profile } = useAuth();
+  const { currentLevel } = useChallenges();
 
   // Mock data - will be replaced with real data from database
   const equityData = [
@@ -140,12 +144,10 @@ const Dashboard: React.FC = () => {
     tradeQuality: 71,
   };
 
-  // Mock user profile - will be replaced with real data
-  const userProfile = {
-    nickname: 'Alex',
-    level: 'Master Trader',
-    levelNumber: 6,
-  };
+  // User profile from auth
+  const userNickname = profile?.nickname || 'Trader';
+  const userLevel = profile?.level || 1;
+  const levelTitle = language === 'fr' ? currentLevel.title : currentLevel.titleEn;
 
   return (
     <div className="space-y-6 py-4">
@@ -154,17 +156,17 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-              {t('welcome')} {userProfile.nickname} 👋
+              {t('welcome')} {userNickname} 👋
             </h1>
             <p className="text-primary font-display font-semibold mt-1 neon-text">
-              {userProfile.level} (Niveau {userProfile.levelNumber})
+              {levelTitle} (Niveau {userLevel})
             </p>
           </div>
           <div className="hidden md:flex items-center gap-3 px-4 py-2 rounded-lg bg-primary/20 border border-primary/30">
             <span className="text-2xl">🏆</span>
             <div>
               <p className="text-xs text-muted-foreground">Niveau actuel</p>
-              <p className="font-display font-bold text-primary">{userProfile.levelNumber}</p>
+              <p className="font-display font-bold text-primary">{userLevel}</p>
             </div>
           </div>
         </div>
