@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 const Header: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { language } = useLanguage();
-  const { toggleSidebar, state } = useSidebar();
+  const { toggleSidebar } = useSidebar();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -20,10 +20,18 @@ const Header: React.FC = () => {
   }, []);
 
   const locale = language === 'fr' ? fr : enUS;
-  const dateFormat = language === 'fr' ? 'EEE d MMM' : 'EEE MMM d';
   
-  const formattedDate = format(currentTime, dateFormat, { locale });
-  const formattedTime = format(currentTime, 'HH:mm:ss');
+  // Format: "Lun 8 Déc 2025    15 : 32 : 47"
+  const dayName = format(currentTime, 'EEE', { locale });
+  const dayNumber = format(currentTime, 'd', { locale });
+  const month = format(currentTime, 'MMM', { locale });
+  const year = format(currentTime, 'yyyy', { locale });
+  const hours = format(currentTime, 'HH', { locale });
+  const minutes = format(currentTime, 'mm', { locale });
+  const seconds = format(currentTime, 'ss', { locale });
+  
+  const formattedDate = `${dayName} ${dayNumber} ${month} ${year}`;
+  const formattedTime = `${hours} : ${minutes} : ${seconds}`;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-primary/20 px-2 sm:px-4 py-2 sm:py-3">
@@ -54,9 +62,11 @@ const Header: React.FC = () => {
         
         {/* Right side - Date & Time */}
         <div className="flex items-center shrink-0">
-          <div className="glass-card px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-3">
-            <span className="text-muted-foreground capitalize text-[10px] sm:text-sm hidden xs:inline">{formattedDate}</span>
-            <span className="text-primary font-display font-semibold neon-text text-xs sm:text-sm">
+          <div className="glass-card px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 sm:gap-4">
+            <span className="text-muted-foreground capitalize text-[10px] sm:text-sm hidden xs:inline whitespace-nowrap">
+              {formattedDate}
+            </span>
+            <span className="text-primary font-display font-semibold neon-text text-xs sm:text-sm whitespace-nowrap">
               {formattedTime}
             </span>
           </div>

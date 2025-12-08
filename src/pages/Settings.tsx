@@ -23,6 +23,7 @@ import {
   Palette,
   Image,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -55,6 +56,7 @@ interface AppSettings {
   fontSize: string;
   vibration: boolean;
   sounds: boolean;
+  animations: boolean;
   background: string;
 }
 
@@ -64,12 +66,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 'standard',
   vibration: true,
   sounds: true,
+  animations: true,
   background: 'default',
 };
 
 const Settings: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('app-settings');
@@ -87,6 +90,13 @@ const Settings: React.FC = () => {
     const color = PRIMARY_COLORS.find(c => c.value === settings.primaryColor);
     if (color) {
       document.documentElement.style.setProperty('--primary', color.hsl);
+    }
+
+    // Apply animations setting
+    if (!settings.animations) {
+      document.documentElement.classList.add('reduce-motion');
+    } else {
+      document.documentElement.classList.remove('reduce-motion');
     }
   }, [settings]);
 
@@ -113,7 +123,9 @@ const Settings: React.FC = () => {
     setSettings(DEFAULT_SETTINGS);
     document.documentElement.style.fontSize = '16px';
     document.documentElement.style.removeProperty('--primary');
-    toast.success(language === 'fr' ? 'Paramètres réinitialisés' : 'Settings reset');
+    document.documentElement.classList.remove('reduce-motion');
+    setTheme('dark');
+    toast.success(language === 'fr' ? 'Affichage réinitialisé' : 'Display reset');
   };
 
   return (
@@ -207,8 +219,8 @@ const Settings: React.FC = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="fr">🇫🇷 Français</SelectItem>
-              <SelectItem value="en">🇬🇧 English</SelectItem>
+              <SelectItem value="fr">Français</SelectItem>
+              <SelectItem value="en">English</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -241,7 +253,7 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Vibration & Sounds */}
+      {/* Vibration */}
       <div className="glass-card p-6 space-y-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -258,7 +270,10 @@ const Settings: React.FC = () => {
             onCheckedChange={(v) => updateSetting('vibration', v)}
           />
         </div>
+      </div>
 
+      {/* Sounds */}
+      <div className="glass-card p-6 space-y-4 animate-fade-in" style={{ animationDelay: '250ms' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Volume2 className="w-5 h-5 text-primary" />
@@ -278,8 +293,29 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Animations */}
+      <div className="glass-card p-6 space-y-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <div>
+              <Label className="text-foreground">
+                {language === 'fr' ? 'Animations' : 'Animations'}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {language === 'fr' ? 'Effets visuels animés' : 'Animated visual effects'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={settings.animations}
+            onCheckedChange={(v) => updateSetting('animations', v)}
+          />
+        </div>
+      </div>
+
       {/* Background */}
-      <div className="glass-card p-6 space-y-4 animate-fade-in" style={{ animationDelay: '250ms' }}>
+      <div className="glass-card p-6 space-y-4 animate-fade-in" style={{ animationDelay: '350ms' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image className="w-5 h-5 text-primary" />
@@ -316,7 +352,7 @@ const Settings: React.FC = () => {
       </Button>
 
       {/* Version Info */}
-      <div className="text-center text-xs text-muted-foreground py-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
+      <div className="text-center text-xs text-muted-foreground py-4 animate-fade-in" style={{ animationDelay: '400ms' }}>
         <p>Smart Trade Tracker v1.0.0</p>
         <p className="mt-1">© 2024 ALPHA FX</p>
       </div>

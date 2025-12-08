@@ -2,13 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import AIChatBot from "@/components/AIChatBot";
-import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import AddTrade from "./pages/AddTrade";
@@ -46,50 +45,29 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Component to conditionally render layout
 const AppContent = () => {
-  const location = useLocation();
   const { user } = useAuth();
-  const isHomePage = location.pathname === '/';
-  const isAuthPage = location.pathname === '/auth';
-
-  // Home page renders without the standard layout
-  if (isHomePage) {
-    return (
-      <>
-        <Routes>
-          <Route path="/" element={<Home />} />
-        </Routes>
-        {user && <AIChatBot />}
-      </>
-    );
-  }
-
-  // Auth page renders without layout
-  if (isAuthPage) {
-    return (
-      <Routes>
-        <Route path="/auth" element={<Auth />} />
-      </Routes>
-    );
-  }
 
   return (
     <>
-      <Layout>
-        <Routes>
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/add-trade" element={<ProtectedRoute><AddTrade /></ProtectedRoute>} />
-          <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          <Route path="/psychology" element={<ProtectedRoute><PsychologicalAnalysis /></ProtectedRoute>} />
-          <Route path="/video-journal" element={<ProtectedRoute><VideoJournal /></ProtectedRoute>} />
-          <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
-          <Route path="/calculator" element={<ProtectedRoute><Calculator /></ProtectedRoute>} />
-          <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        {/* Auth page renders without layout */}
+        <Route path="/auth" element={<Auth />} />
+        
+        {/* All other routes with layout */}
+        <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route path="/add-trade" element={<ProtectedRoute><Layout><AddTrade /></Layout></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><Layout><History /></Layout></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+        <Route path="/psychology" element={<ProtectedRoute><Layout><PsychologicalAnalysis /></Layout></ProtectedRoute>} />
+        <Route path="/video-journal" element={<ProtectedRoute><Layout><VideoJournal /></Layout></ProtectedRoute>} />
+        <Route path="/journal" element={<ProtectedRoute><Layout><Journal /></Layout></ProtectedRoute>} />
+        <Route path="/calculator" element={<ProtectedRoute><Layout><Calculator /></Layout></ProtectedRoute>} />
+        <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
       {user && <AIChatBot />}
     </>
   );
