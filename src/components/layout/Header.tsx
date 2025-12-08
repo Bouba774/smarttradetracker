@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,6 +11,7 @@ const Header: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { language } = useLanguage();
   const { toggleSidebar } = useSidebar();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -67,10 +69,14 @@ const Header: React.FC = () => {
         {/* Right side - Date & Time */}
         <div className="flex items-center shrink-0">
           <div className="glass-card px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-3">
-            <span className="text-muted-foreground text-[10px] sm:text-sm hidden xs:inline whitespace-nowrap">
-              {formattedDate}
-            </span>
-            <span className="text-primary font-display font-semibold neon-text text-[11px] sm:text-sm whitespace-nowrap tracking-wider">
+            {/* Date visible only on larger screens */}
+            {!isMobile && (
+              <span className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
+                {formattedDate}
+              </span>
+            )}
+            {/* Time always visible */}
+            <span className="text-primary font-display font-semibold neon-text text-xs sm:text-sm whitespace-nowrap tracking-wider">
               {formattedTime}
             </span>
           </div>
