@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFeedback } from '@/hooks/useFeedback';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -8,7 +9,6 @@ import {
   Settings as SettingsIcon,
   Moon,
   Sun,
-  Zap,
   Palette,
   Languages,
   Type,
@@ -42,6 +42,7 @@ const defaultSettings: AppSettings = {
 const Settings: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const { theme, setTheme } = useTheme();
+  const { triggerFeedback } = useFeedback();
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [primaryColor, setPrimaryColor] = useState('blue');
 
@@ -71,6 +72,7 @@ const Settings: React.FC = () => {
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     const newSettings = { ...settings, [key]: value };
     saveSettings(newSettings);
+    triggerFeedback('click');
     
     // Apply font size
     if (key === 'fontSize') {
@@ -88,14 +90,15 @@ const Settings: React.FC = () => {
       }
     }
 
-    toast.success(language === 'fr' ? 'Paramètre mis à jour' : 'Setting updated');
+    toast.success(t('settingUpdated'));
   };
 
   const handleColorChange = (color: string) => {
     setPrimaryColor(color);
     localStorage.setItem('smart-trade-tracker-primary-color', color);
+    triggerFeedback('click');
     
-    // Apply color to CSS variables (you can extend this)
+    // Apply color to CSS variables
     const root = document.documentElement;
     const colorMap: Record<string, string> = {
       blue: '217 91% 60%',
@@ -110,7 +113,7 @@ const Settings: React.FC = () => {
       root.style.setProperty('--primary', colorMap[color]);
     }
     
-    toast.success(language === 'fr' ? 'Couleur mise à jour' : 'Color updated');
+    toast.success(t('colorUpdated'));
   };
 
   const handleReset = () => {
@@ -120,12 +123,15 @@ const Settings: React.FC = () => {
     document.documentElement.style.fontSize = '16px';
     document.documentElement.style.removeProperty('--primary');
     setTheme('dark');
+    triggerFeedback('success');
     
-    toast.success(
-      language === 'fr' 
-        ? 'Interface réinitialisée' 
-        : 'Interface reset'
-    );
+    toast.success(t('interfaceReset'));
+  };
+
+  const handleLanguageChange = (lang: 'fr' | 'en') => {
+    setLanguage(lang);
+    triggerFeedback('click');
+    toast.success(t('settingUpdated'));
   };
 
   const colors = [
@@ -138,8 +144,8 @@ const Settings: React.FC = () => {
   ];
 
   const themes = [
-    { id: 'light' as const, label: language === 'fr' ? 'Clair' : 'Light', icon: Sun },
-    { id: 'dark' as const, label: language === 'fr' ? 'Sombre' : 'Dark', icon: Moon },
+    { id: 'light' as const, label: t('light'), icon: Sun },
+    { id: 'dark' as const, label: t('dark'), icon: Moon },
   ];
 
   const fontSizes = [
@@ -161,7 +167,7 @@ const Settings: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'fr' ? 'Paramètres' : 'Settings'}
+            {t('settings')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             {language === 'fr' ? 'Personnalisez votre expérience' : 'Customize your experience'}
@@ -177,25 +183,28 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <Moon className="w-5 h-5 text-primary" />
           <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Mode d\'affichage' : 'Display Mode'}
+            {t('displayMode')}
           </h3>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          {themes.map((t) => {
-            const Icon = t.icon;
+        <div className="grid grid-cols-2 gap-3">
+          {themes.map((themeItem) => {
+            const Icon = themeItem.icon;
             return (
               <button
-                key={t.id}
-                onClick={() => setTheme(t.id)}
+                key={themeItem.id}
+                onClick={() => {
+                  setTheme(themeItem.id);
+                  triggerFeedback('click');
+                }}
                 className={cn(
                   "flex flex-col items-center gap-2 p-4 rounded-lg border transition-all",
-                  theme === t.id
+                  theme === themeItem.id
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
                 )}
               >
                 <Icon className="w-6 h-6" />
-                <span className="text-xs font-medium">{t.label}</span>
+                <span className="text-xs font-medium">{themeItem.label}</span>
               </button>
             );
           })}
@@ -207,7 +216,7 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <Palette className="w-5 h-5 text-primary" />
           <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Couleur principale' : 'Primary Color'}
+            {t('primaryColor')}
           </h3>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -233,12 +242,12 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <Languages className="w-5 h-5 text-primary" />
           <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Langue' : 'Language'}
+            {t('language')}
           </h3>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => setLanguage('fr')}
+            onClick={() => handleLanguageChange('fr')}
             className={cn(
               "flex items-center justify-center gap-2 p-4 rounded-lg border transition-all",
               language === 'fr'
@@ -250,7 +259,7 @@ const Settings: React.FC = () => {
             <span className="font-medium">Français</span>
           </button>
           <button
-            onClick={() => setLanguage('en')}
+            onClick={() => handleLanguageChange('en')}
             className={cn(
               "flex items-center justify-center gap-2 p-4 rounded-lg border transition-all",
               language === 'en'
@@ -269,7 +278,7 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <Type className="w-5 h-5 text-primary" />
           <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Taille de police' : 'Font Size'}
+            {t('fontSize')}
           </h3>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -308,7 +317,7 @@ const Settings: React.FC = () => {
           <div className="flex items-center gap-3">
             <Vibrate className="w-5 h-5 text-primary" />
             <Label htmlFor="vibration" className="text-foreground">
-              {language === 'fr' ? 'Vibration' : 'Vibration'}
+              {t('vibration')}
             </Label>
           </div>
           <Switch
@@ -323,7 +332,7 @@ const Settings: React.FC = () => {
           <div className="flex items-center gap-3">
             <Volume2 className="w-5 h-5 text-primary" />
             <Label htmlFor="sounds" className="text-foreground">
-              {language === 'fr' ? 'Sons' : 'Sounds'}
+              {t('sounds')}
             </Label>
           </div>
           <Switch
@@ -338,7 +347,7 @@ const Settings: React.FC = () => {
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-primary" />
             <Label htmlFor="animations" className="text-foreground">
-              Animations
+              {t('animations')}
             </Label>
           </div>
           <Switch
@@ -354,7 +363,7 @@ const Settings: React.FC = () => {
         <div className="flex items-center gap-3 mb-4">
           <Image className="w-5 h-5 text-primary" />
           <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Fond d\'écran' : 'Background'}
+            {t('background')}
           </h3>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -383,7 +392,7 @@ const Settings: React.FC = () => {
           onClick={handleReset}
         >
           <RotateCcw className="w-5 h-5" />
-          {language === 'fr' ? 'Réinitialiser l\'affichage' : 'Reset display'}
+          {t('resetDisplay')}
         </Button>
       </div>
     </div>

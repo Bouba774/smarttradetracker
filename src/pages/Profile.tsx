@@ -1,9 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTrades } from '@/hooks/useTrades';
+import { useJournalEntries } from '@/hooks/useJournalEntries';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { useFeedback } from '@/hooks/useFeedback';
 import {
   User,
   Mail,
@@ -14,6 +17,9 @@ import {
   AlertTriangle,
   Shield,
   Star,
+  Download,
+  FileJson,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -29,21 +35,22 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Profile: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { user, profile, signOut, refreshProfile } = useAuth();
+  const { trades } = useTrades();
+  const { entries: journalEntries } = useJournalEntries();
+  const { triggerFeedback } = useFeedback();
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingData, setIsDeletingData] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get user level title
   const getLevelTitle = (level: number) => {
-    const titles = {
-      fr: ['Débutant', 'Intermédiaire', 'Analyste', 'Pro', 'Expert', 'Légende'],
-      en: ['Beginner', 'Intermediate', 'Analyst', 'Pro', 'Expert', 'Legend'],
-    };
+    const titles = ['beginner', 'intermediate', 'analyst', 'pro', 'expert', 'legend'];
     const index = Math.min(level - 1, 5);
-    return language === 'fr' ? titles.fr[index] : titles.en[index];
+    return t(titles[index]);
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +59,7 @@ const Profile: React.FC = () => {
 
     // Validate file
     if (!file.type.startsWith('image/')) {
-      toast.error(language === 'fr' ? 'Veuillez sélectionner une image' : 'Please select an image');
+      toast.error(t('error'));
       return;
     }
 
@@ -62,6 +69,7 @@ const Profile: React.FC = () => {
     }
 
     setIsUploading(true);
+    triggerFeedback('click');
 
     try {
       const fileExt = file.name.split('.').pop();
@@ -88,12 +96,111 @@ const Profile: React.FC = () => {
       if (updateError) throw updateError;
 
       await refreshProfile();
+      triggerFeedback('success');
       toast.success(language === 'fr' ? 'Photo mise à jour!' : 'Photo updated!');
     } catch (error) {
       console.error('Error uploading photo:', error);
+      triggerFeedback('error');
       toast.error(language === 'fr' ? 'Erreur lors du téléchargement' : 'Upload error');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleExportJSON = async () => {
+    if (trades.length === 0 && journalEntries.length === 0) {
+      toast.error(t('noDataToExport'));
+      return;
+    }
+
+    setIsExporting(true);
+    triggerFeedback('click');
+
+    try {
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        profile: profile ? {
+          nickname: profile.nickname,
+          level: profile.level,
+          total_points: profile.total_points,
+          trading_style: profile.trading_style,
+        } : null,
+        trades: trades,
+        journalEntries: journalEntries,
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `smart-trade-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      triggerFeedback('success');
+      toast.success(t('exportSuccess'));
+    } catch (error) {
+      console.error('Export error:', error);
+      triggerFeedback('error');
+      toast.error(t('exportError'));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (trades.length === 0) {
+      toast.error(t('noDataToExport'));
+      return;
+    }
+
+    setIsExporting(true);
+    triggerFeedback('click');
+
+    try {
+      // Create CSV for trades
+      const headers = ['Date', 'Asset', 'Direction', 'Entry Price', 'Exit Price', 'Stop Loss', 'Take Profit', 'Lot Size', 'PnL', 'Result', 'Setup', 'Emotions', 'Notes'];
+      const rows = trades.map(trade => [
+        trade.trade_date,
+        trade.asset,
+        trade.direction,
+        trade.entry_price,
+        trade.exit_price || '',
+        trade.stop_loss || '',
+        trade.take_profit || '',
+        trade.lot_size,
+        trade.profit_loss || '',
+        trade.result || '',
+        trade.setup || '',
+        trade.emotions || '',
+        trade.notes?.replace(/"/g, '""') || '',
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `smart-trade-tracker-trades-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      triggerFeedback('success');
+      toast.success(t('exportSuccess'));
+    } catch (error) {
+      console.error('Export error:', error);
+      triggerFeedback('error');
+      toast.error(t('exportError'));
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -101,6 +208,7 @@ const Profile: React.FC = () => {
     if (!user) return;
 
     setIsDeletingData(true);
+    triggerFeedback('click');
 
     try {
       // Delete trades
@@ -122,14 +230,12 @@ const Profile: React.FC = () => {
         .eq('user_id', user.id);
 
       await refreshProfile();
-      toast.success(
-        language === 'fr' 
-          ? 'Toutes vos données ont été supprimées' 
-          : 'All your data has been deleted'
-      );
+      triggerFeedback('success');
+      toast.success(t('dataDeleted'));
     } catch (error) {
       console.error('Error deleting data:', error);
-      toast.error(language === 'fr' ? 'Erreur lors de la suppression' : 'Deletion error');
+      triggerFeedback('error');
+      toast.error(t('error'));
     } finally {
       setIsDeletingData(false);
     }
@@ -139,6 +245,7 @@ const Profile: React.FC = () => {
     if (!user) return;
 
     setIsDeletingAccount(true);
+    triggerFeedback('click');
 
     try {
       // First delete all user data
@@ -150,14 +257,12 @@ const Profile: React.FC = () => {
       // Sign out (account deletion requires admin API, we'll just sign out)
       await signOut();
 
-      toast.success(
-        language === 'fr' 
-          ? 'Compte supprimé. Au revoir!' 
-          : 'Account deleted. Goodbye!'
-      );
+      triggerFeedback('success');
+      toast.success(t('accountDeleted'));
     } catch (error) {
       console.error('Error deleting account:', error);
-      toast.error(language === 'fr' ? 'Erreur lors de la suppression' : 'Deletion error');
+      triggerFeedback('error');
+      toast.error(t('error'));
     } finally {
       setIsDeletingAccount(false);
     }
@@ -173,10 +278,10 @@ const Profile: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-            {language === 'fr' ? 'Mon Profil' : 'My Profile'}
+            {t('myProfile')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {language === 'fr' ? 'Gérez votre compte' : 'Manage your account'}
+            {t('manageAccount')}
           </p>
         </div>
         <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
@@ -217,27 +322,58 @@ const Profile: React.FC = () => {
               <Trophy className="w-6 h-6 text-primary" />
               <div className="text-left">
                 <p className="text-sm text-muted-foreground">
-                  {language === 'fr' ? 'Titre & Niveau' : 'Title & Level'}
+                  {t('titleLevel')}
                 </p>
                 <p className="font-display font-bold text-foreground">
-                  {userTitle} <span className="text-primary">(Niveau {userLevel})</span>
+                  {userTitle} <span className="text-primary">({t('level')} {userLevel})</span>
                 </p>
               </div>
             </div>
             <div className="mt-3 flex items-center justify-center gap-2">
               <Star className="w-4 h-4 text-yellow-500" />
               <span className="text-sm text-muted-foreground">
-                {totalPoints} {language === 'fr' ? 'points' : 'points'}
+                {totalPoints} {t('points')}
               </span>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Export Data Card */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '50ms' }}>
+        <div className="flex items-center gap-2 mb-4">
+          <Download className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {t('exportData')}
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 justify-start gap-3 h-12"
+            onClick={handleExportJSON}
+            disabled={isExporting}
+          >
+            <FileJson className="w-5 h-5 text-primary" />
+            {t('exportJSON')}
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 justify-start gap-3 h-12"
+            onClick={handleExportCSV}
+            disabled={isExporting}
+          >
+            <FileSpreadsheet className="w-5 h-5 text-profit" />
+            {t('exportCSV')}
+          </Button>
+        </div>
+      </div>
+
       {/* Actions Card */}
       <div className="glass-card p-6 animate-fade-in space-y-4" style={{ animationDelay: '100ms' }}>
         <h3 className="font-display font-semibold text-foreground mb-4">
-          {language === 'fr' ? 'Actions' : 'Actions'}
+          {t('actions')}
         </h3>
 
         {/* Change Photo */}
@@ -251,23 +387,27 @@ const Profile: React.FC = () => {
         <Button
           variant="outline"
           className="w-full justify-start gap-3 h-12"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            triggerFeedback('click');
+            fileInputRef.current?.click();
+          }}
           disabled={isUploading}
         >
           <Camera className="w-5 h-5 text-primary" />
-          {isUploading 
-            ? (language === 'fr' ? 'Téléchargement...' : 'Uploading...')
-            : (language === 'fr' ? 'Changer la photo' : 'Change photo')}
+          {isUploading ? t('uploading') : t('changePhoto')}
         </Button>
 
         {/* Logout */}
         <Button
           variant="outline"
           className="w-full justify-start gap-3 h-12"
-          onClick={signOut}
+          onClick={() => {
+            triggerFeedback('click');
+            signOut();
+          }}
         >
           <LogOut className="w-5 h-5 text-muted-foreground" />
-          {language === 'fr' ? 'Se déconnecter' : 'Sign out'}
+          {t('signOut')}
         </Button>
       </div>
 
@@ -276,7 +416,7 @@ const Profile: React.FC = () => {
         <div className="flex items-center gap-2 mb-4">
           <AlertTriangle className="w-5 h-5 text-loss" />
           <h3 className="font-display font-semibold text-loss">
-            {language === 'fr' ? 'Zone de danger' : 'Danger Zone'}
+            {t('dangerZone')}
           </h3>
         </div>
 
@@ -288,34 +428,31 @@ const Profile: React.FC = () => {
                 variant="outline"
                 className="w-full justify-start gap-3 h-12 border-loss/30 text-loss hover:bg-loss/10"
                 disabled={isDeletingData}
+                onClick={() => triggerFeedback('click')}
               >
                 <Trash2 className="w-5 h-5" />
-                {isDeletingData
-                  ? (language === 'fr' ? 'Suppression...' : 'Deleting...')
-                  : (language === 'fr' ? 'Supprimer toutes mes données' : 'Delete all my data')}
+                {isDeletingData ? t('loading') : t('deleteAllData')}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-loss" />
-                  {language === 'fr' ? 'Supprimer toutes les données?' : 'Delete all data?'}
+                  {t('deleteDataConfirm')}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {language === 'fr' 
-                    ? 'Cette action supprimera tous vos trades, journaux, routines, vidéos, analyses psychologiques et défis. Votre compte restera actif. Cette action est irréversible.'
-                    : 'This will delete all your trades, journals, routines, videos, psychological analyses and challenges. Your account will remain active. This action is irreversible.'}
+                  {t('deleteDataDesc')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                <AlertDialogCancel onClick={() => triggerFeedback('click')}>
+                  {t('cancel')}
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteAllData}
                   className="bg-loss hover:bg-loss/90"
                 >
-                  {language === 'fr' ? 'Supprimer tout' : 'Delete all'}
+                  {t('deleteAll')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -328,34 +465,31 @@ const Profile: React.FC = () => {
                 variant="destructive"
                 className="w-full justify-start gap-3 h-12"
                 disabled={isDeletingAccount}
+                onClick={() => triggerFeedback('click')}
               >
                 <Shield className="w-5 h-5" />
-                {isDeletingAccount
-                  ? (language === 'fr' ? 'Suppression...' : 'Deleting...')
-                  : (language === 'fr' ? 'Supprimer définitivement le compte' : 'Permanently delete account')}
+                {isDeletingAccount ? t('loading') : t('deleteAccountPermanently')}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-loss">
                   <Shield className="w-5 h-5" />
-                  {language === 'fr' ? 'Supprimer le compte?' : 'Delete account?'}
+                  {t('deleteAccountConfirm')}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {language === 'fr' 
-                    ? 'Cette action supprimera définitivement votre compte et toutes vos données. Vous ne pourrez plus vous connecter. Cette action est irréversible!'
-                    : 'This will permanently delete your account and all your data. You will no longer be able to sign in. This action is irreversible!'}
+                  {t('deleteAccountDesc')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                <AlertDialogCancel onClick={() => triggerFeedback('click')}>
+                  {t('cancel')}
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleDeleteAccount}
                   className="bg-loss hover:bg-loss/90"
                 >
-                  {language === 'fr' ? 'Supprimer le compte' : 'Delete account'}
+                  {t('deleteAccount')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

@@ -21,7 +21,7 @@ const Header: React.FC = () => {
 
   const locale = language === 'fr' ? fr : enUS;
   
-  // Format: "Lun 8 Déc 2025    15 : 32 : 47"
+  // Format: "Lun 8 Déc 2025   23 : 15 : 12"
   const dayName = format(currentTime, 'EEE', { locale });
   const dayNumber = format(currentTime, 'd', { locale });
   const month = format(currentTime, 'MMM', { locale });
@@ -30,7 +30,11 @@ const Header: React.FC = () => {
   const minutes = format(currentTime, 'mm', { locale });
   const seconds = format(currentTime, 'ss', { locale });
   
-  const formattedDate = `${dayName} ${dayNumber} ${month} ${year}`;
+  // Capitalize first letter
+  const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+  const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+  
+  const formattedDate = `${capitalizedDay} ${dayNumber} ${capitalizedMonth} ${year}`;
   const formattedTime = `${hours} : ${minutes} : ${seconds}`;
 
   return (
@@ -62,11 +66,11 @@ const Header: React.FC = () => {
         
         {/* Right side - Date & Time */}
         <div className="flex items-center shrink-0">
-          <div className="glass-card px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2 sm:gap-4">
-            <span className="text-muted-foreground capitalize text-[10px] sm:text-sm hidden xs:inline whitespace-nowrap">
+          <div className="glass-card px-2 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-3">
+            <span className="text-muted-foreground text-[10px] sm:text-sm hidden xs:inline whitespace-nowrap">
               {formattedDate}
             </span>
-            <span className="text-primary font-display font-semibold neon-text text-xs sm:text-sm whitespace-nowrap">
+            <span className="text-primary font-display font-semibold neon-text text-[11px] sm:text-sm whitespace-nowrap tracking-wider">
               {formattedTime}
             </span>
           </div>
