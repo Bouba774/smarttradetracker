@@ -8,27 +8,19 @@ import BullBearAnimation from '@/components/landing/BullBearAnimation';
 import QuoteRotator from '@/components/landing/QuoteRotator';
 import MiniWidgets from '@/components/landing/MiniWidgets';
 import DigitalClock from '@/components/landing/DigitalClock';
-
-// User levels matching the app's progression system
-const USER_LEVELS = [
-  { level: 1, title: 'Débutant', minPoints: 0 },
-  { level: 2, title: 'Intermédiaire', minPoints: 100 },
-  { level: 3, title: 'Analyste', minPoints: 300 },
-  { level: 4, title: 'Pro', minPoints: 600 },
-  { level: 5, title: 'Expert', minPoints: 1000 },
-  { level: 6, title: 'Master', minPoints: 1500 },
-  { level: 7, title: 'Légende', minPoints: 2500 },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { USER_LEVELS } from '@/hooks/useChallenges';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { profile, user } = useAuth();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
 
-  // Mock user data - will come from auth later
-  const userName = 'Trader';
-  const userPoints = 650;
+  // User data from auth
+  const userName = profile?.nickname || 'Trader';
+  const userPoints = profile?.total_points || 0;
   const currentLevel = USER_LEVELS.reduce((acc, level) => 
     userPoints >= level.minPoints ? level : acc, USER_LEVELS[0]
   );
