@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import {
   BookOpen,
@@ -14,16 +14,12 @@ import {
   AlertTriangle,
   Award,
   Star,
-  Mic,
-  Video,
-  Play,
-  Pause,
-  Save,
   Plus,
   Trash2,
   Edit2,
   Check,
   X,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,18 +39,18 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
 ];
 
 const Journal: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
 
-  const [checklist, setChecklist] = useState<ChecklistItem[]>(() => {
-    const saved = localStorage.getItem('premarket-checklist');
-    return saved ? JSON.parse(saved) : DEFAULT_CHECKLIST;
-  });
+  const storageKey = user ? `journal-${user.id}` : 'journal-guest';
+
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [objectives, setObjectives] = useState('');
   const [lessons, setLessons] = useState('');
   const [mistakes, setMistakes] = useState('');
   const [strengths, setStrengths] = useState('');
   const [rating, setRating] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Editing states
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -62,9 +58,56 @@ const Journal: React.FC = () => {
   const [newItemLabel, setNewItemLabel] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
 
+  // Load data from localStorage on mount
+  useEffect(() => {
+    if (!user) {
+      setChecklist(DEFAULT_CHECKLIST.map(item => ({ ...item, checked: false })));
+      setIsLoading(false);
+      return;
+    }
+
+    const savedData = localStorage.getItem(storageKey);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setChecklist(parsed.checklist || DEFAULT_CHECKLIST.map(item => ({ ...item, checked: false })));
+        setObjectives(parsed.objectives || '');
+        setLessons(parsed.lessons || '');
+        setMistakes(parsed.mistakes || '');
+        setStrengths(parsed.strengths || '');
+        setRating(parsed.rating || 0);
+      } catch (e) {
+        setChecklist(DEFAULT_CHECKLIST.map(item => ({ ...item, checked: false })));
+      }
+    } else {
+      setChecklist(DEFAULT_CHECKLIST.map(item => ({ ...item, checked: false })));
+    }
+    setIsLoading(false);
+  }, [user, storageKey]);
+
+  const saveToStorage = (data: {
+    checklist: ChecklistItem[];
+    objectives: string;
+    lessons: string;
+    mistakes: string;
+    strengths: string;
+    rating: number;
+  }) => {
+    if (user) {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+  };
+
   const saveChecklist = (newChecklist: ChecklistItem[]) => {
     setChecklist(newChecklist);
-    localStorage.setItem('premarket-checklist', JSON.stringify(newChecklist));
+    saveToStorage({
+      checklist: newChecklist,
+      objectives,
+      lessons,
+      mistakes,
+      strengths,
+      rating,
+    });
   };
 
   const toggleChecklistItem = (id: string) => {
@@ -81,7 +124,7 @@ const Journal: React.FC = () => {
 
   const saveEdit = () => {
     if (!editingLabel.trim()) {
-      toast.error('Le libellé ne peut pas être vide');
+      toast.error(language === 'fr' ? 'Le libellé ne peut pas être vide' : 'Label cannot be empty');
       return;
     }
     const updated = checklist.map(item =>
@@ -90,7 +133,7 @@ const Journal: React.FC = () => {
     saveChecklist(updated);
     setEditingId(null);
     setEditingLabel('');
-    toast.success('Élément modifié');
+    toast.success(language === 'fr' ? 'Élément modifié' : 'Item updated');
   };
 
   const cancelEdit = () => {
@@ -101,12 +144,12 @@ const Journal: React.FC = () => {
   const deleteItem = (id: string) => {
     const updated = checklist.filter(item => item.id !== id);
     saveChecklist(updated);
-    toast.success('Élément supprimé');
+    toast.success(language === 'fr' ? 'Élément supprimé' : 'Item deleted');
   };
 
   const addNewItem = () => {
     if (!newItemLabel.trim()) {
-      toast.error('Le libellé ne peut pas être vide');
+      toast.error(language === 'fr' ? 'Le libellé ne peut pas être vide' : 'Label cannot be empty');
       return;
     }
     const newItem: ChecklistItem = {
@@ -117,7 +160,7 @@ const Journal: React.FC = () => {
     saveChecklist([...checklist, newItem]);
     setNewItemLabel('');
     setIsAddingNew(false);
-    toast.success('Élément ajouté');
+    toast.success(language === 'fr' ? 'Élément ajouté' : 'Item added');
   };
 
   const completedItems = checklist.filter(item => item.checked).length;
@@ -126,8 +169,24 @@ const Journal: React.FC = () => {
     : 0;
 
   const handleSave = () => {
-    toast.success('Journal enregistré avec succès!');
+    saveToStorage({
+      checklist,
+      objectives,
+      lessons,
+      mistakes,
+      strengths,
+      rating,
+    });
+    toast.success(language === 'fr' ? 'Journal enregistré avec succès!' : 'Journal saved successfully!');
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="py-4 max-w-4xl mx-auto space-y-6">
@@ -138,7 +197,7 @@ const Journal: React.FC = () => {
             {t('journal')}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Routine quotidienne et leçons apprises
+            {language === 'fr' ? 'Routine quotidienne et leçons apprises' : 'Daily routine and lessons learned'}
           </p>
         </div>
         <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
@@ -155,8 +214,10 @@ const Journal: React.FC = () => {
                 <CheckCircle2 className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-display font-semibold text-foreground">Check-list Pré-Marché</h3>
-                <p className="text-xs text-muted-foreground">{completedItems}/{checklist.length} complété</p>
+                <h3 className="font-display font-semibold text-foreground">
+                  {language === 'fr' ? 'Check-list Pré-Marché' : 'Pre-Market Checklist'}
+                </h3>
+                <p className="text-xs text-muted-foreground">{completedItems}/{checklist.length} {language === 'fr' ? 'complété' : 'completed'}</p>
               </div>
             </div>
             <div className={cn(
@@ -243,7 +304,7 @@ const Journal: React.FC = () => {
                 <Input
                   value={newItemLabel}
                   onChange={(e) => setNewItemLabel(e.target.value)}
-                  placeholder="Nouvel élément..."
+                  placeholder={language === 'fr' ? 'Nouvel élément...' : 'New item...'}
                   className="flex-1 h-8"
                   autoFocus
                   onKeyDown={(e) => {
@@ -272,7 +333,7 @@ const Journal: React.FC = () => {
                 onClick={() => setIsAddingNew(true)}
               >
                 <Plus className="w-4 h-4" />
-                Ajouter un élément
+                {language === 'fr' ? 'Ajouter un élément' : 'Add item'}
               </Button>
             )}
           </div>
@@ -284,12 +345,19 @@ const Journal: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
               <Target className="w-5 h-5 text-primary" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Objectifs du Jour</h3>
+            <h3 className="font-display font-semibold text-foreground">
+              {language === 'fr' ? 'Objectifs du Jour' : "Today's Objectives"}
+            </h3>
           </div>
           <Textarea
-            placeholder="Quels sont vos objectifs pour aujourd'hui?&#10;- Max 3 trades&#10;- Risque max 2%&#10;- Respecter le plan..."
+            placeholder={language === 'fr' 
+              ? "Quels sont vos objectifs pour aujourd'hui?\n- Max 3 trades\n- Risque max 2%\n- Respecter le plan..."
+              : "What are your goals for today?\n- Max 3 trades\n- Max 2% risk\n- Follow the plan..."}
             value={objectives}
-            onChange={(e) => setObjectives(e.target.value)}
+            onChange={(e) => {
+              setObjectives(e.target.value);
+              saveToStorage({ checklist, objectives: e.target.value, lessons, mistakes, strengths, rating });
+            }}
             className="min-h-[180px]"
           />
         </div>
@@ -300,12 +368,19 @@ const Journal: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-profit/20 flex items-center justify-center">
               <Lightbulb className="w-5 h-5 text-profit" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Leçons Apprises</h3>
+            <h3 className="font-display font-semibold text-foreground">
+              {language === 'fr' ? 'Leçons Apprises' : 'Lessons Learned'}
+            </h3>
           </div>
           <Textarea
-            placeholder="Qu'avez-vous appris aujourd'hui?&#10;- La patience paie&#10;- Ne pas entrer trop tôt..."
+            placeholder={language === 'fr'
+              ? "Qu'avez-vous appris aujourd'hui?\n- La patience paie\n- Ne pas entrer trop tôt..."
+              : "What did you learn today?\n- Patience pays off\n- Don't enter too early..."}
             value={lessons}
-            onChange={(e) => setLessons(e.target.value)}
+            onChange={(e) => {
+              setLessons(e.target.value);
+              saveToStorage({ checklist, objectives, lessons: e.target.value, mistakes, strengths, rating });
+            }}
             className="min-h-[150px]"
           />
         </div>
@@ -316,12 +391,19 @@ const Journal: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-loss/20 flex items-center justify-center">
               <AlertTriangle className="w-5 h-5 text-loss" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Erreurs Récurrentes</h3>
+            <h3 className="font-display font-semibold text-foreground">
+              {language === 'fr' ? 'Erreurs Récurrentes' : 'Common Mistakes'}
+            </h3>
           </div>
           <Textarea
-            placeholder="Quelles erreurs éviter?&#10;- FOMO sur les breakouts&#10;- Trading pendant les news..."
+            placeholder={language === 'fr'
+              ? "Quelles erreurs éviter?\n- FOMO sur les breakouts\n- Trading pendant les news..."
+              : "What mistakes to avoid?\n- FOMO on breakouts\n- Trading during news..."}
             value={mistakes}
-            onChange={(e) => setMistakes(e.target.value)}
+            onChange={(e) => {
+              setMistakes(e.target.value);
+              saveToStorage({ checklist, objectives, lessons, mistakes: e.target.value, strengths, rating });
+            }}
             className="min-h-[150px]"
           />
         </div>
@@ -332,12 +414,19 @@ const Journal: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-profit/20 flex items-center justify-center">
               <Award className="w-5 h-5 text-profit" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Points Forts</h3>
+            <h3 className="font-display font-semibold text-foreground">
+              {language === 'fr' ? 'Points Forts' : 'Strengths'}
+            </h3>
           </div>
           <Textarea
-            placeholder="Vos forces de la journée?&#10;- Bon timing d'entrée&#10;- Patience sur les positions..."
+            placeholder={language === 'fr'
+              ? "Vos forces de la journée?\n- Bon timing d'entrée\n- Patience sur les positions..."
+              : "Your strengths today?\n- Good entry timing\n- Patience on positions..."}
             value={strengths}
-            onChange={(e) => setStrengths(e.target.value)}
+            onChange={(e) => {
+              setStrengths(e.target.value);
+              saveToStorage({ checklist, objectives, lessons, mistakes, strengths: e.target.value, rating });
+            }}
             className="min-h-[150px]"
           />
         </div>
@@ -348,14 +437,19 @@ const Journal: React.FC = () => {
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
               <Star className="w-5 h-5 text-primary" />
             </div>
-            <h3 className="font-display font-semibold text-foreground">Évaluation de la Journée</h3>
+            <h3 className="font-display font-semibold text-foreground">
+              {language === 'fr' ? 'Évaluation de la Journée' : 'Day Rating'}
+            </h3>
           </div>
           
           <div className="flex items-center justify-center gap-2 py-4">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
-                onClick={() => setRating(star)}
+                onClick={() => {
+                  setRating(star);
+                  saveToStorage({ checklist, objectives, lessons, mistakes, strengths, rating: star });
+                }}
                 className="transition-transform hover:scale-110"
               >
                 <Star
@@ -371,64 +465,14 @@ const Journal: React.FC = () => {
           </div>
           
           <p className="text-center text-sm text-muted-foreground mt-2">
-            {rating === 0 && "Cliquez pour évaluer votre journée"}
-            {rating === 1 && "Journée difficile 😔"}
-            {rating === 2 && "Peut mieux faire 🤔"}
-            {rating === 3 && "Journée correcte 👍"}
-            {rating === 4 && "Bonne journée! 😊"}
-            {rating === 5 && "Excellente journée! 🌟"}
+            {rating === 0 && (language === 'fr' ? "Cliquez pour évaluer votre journée" : "Click to rate your day")}
+            {rating === 1 && (language === 'fr' ? "Journée difficile 😔" : "Tough day 😔")}
+            {rating === 2 && (language === 'fr' ? "Peut mieux faire 🤔" : "Could be better 🤔")}
+            {rating === 3 && (language === 'fr' ? "Journée correcte 👍" : "Decent day 👍")}
+            {rating === 4 && (language === 'fr' ? "Bonne journée! 😊" : "Good day! 😊")}
+            {rating === 5 && (language === 'fr' ? "Excellente journée! 🌟" : "Excellent day! 🌟")}
           </p>
         </div>
-      </div>
-
-      {/* Video/Audio Journal */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '600ms' }}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Video className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-foreground">Journal Vidéo/Audio</h3>
-            <p className="text-xs text-muted-foreground">Enregistrez votre ressenti du jour (max 60s)</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center py-8">
-          <Button
-            variant={isRecording ? 'destructive' : 'outline'}
-            size="lg"
-            className="gap-3 w-full sm:w-auto"
-            onClick={() => setIsRecording(!isRecording)}
-          >
-            {isRecording ? (
-              <>
-                <Pause className="w-5 h-5" />
-                Arrêter l'enregistrement
-              </>
-            ) : (
-              <>
-                <Mic className="w-5 h-5" />
-                Enregistrer Audio
-              </>
-            )}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="gap-3 w-full sm:w-auto"
-          >
-            <Video className="w-5 h-5" />
-            Enregistrer Vidéo
-          </Button>
-        </div>
-
-        {isRecording && (
-          <div className="flex items-center justify-center gap-2 text-loss animate-pulse">
-            <div className="w-3 h-3 rounded-full bg-loss" />
-            <span className="text-sm font-medium">Enregistrement en cours...</span>
-          </div>
-        )}
       </div>
 
       {/* Save Button */}
@@ -438,8 +482,8 @@ const Journal: React.FC = () => {
           size="lg"
           className="gap-2 bg-gradient-primary hover:opacity-90 font-display"
         >
-          <Save className="w-5 h-5" />
-          Enregistrer le Journal
+          <CheckCircle2 className="w-5 h-5" />
+          {language === 'fr' ? 'Enregistrer le Journal' : 'Save Journal'}
         </Button>
       </div>
     </div>

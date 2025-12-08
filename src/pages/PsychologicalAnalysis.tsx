@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTrades } from '@/hooks/useTrades';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import GaugeChart from '@/components/ui/GaugeChart';
@@ -15,57 +16,210 @@ import {
   CheckCircle2,
   Target,
   Zap,
+  Loader2,
 } from 'lucide-react';
+import { parseISO, getDay, subWeeks, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 
-// Mock data - to be replaced with real data
-const EMOTION_STATS = [
-  { emotion: 'Calme', wins: 75, losses: 25, trades: 45 },
-  { emotion: 'Confiant', wins: 68, losses: 32, trades: 28 },
-  { emotion: 'Stressé', wins: 35, losses: 65, trades: 20 },
-  { emotion: 'Impulsif', wins: 25, losses: 75, trades: 12 },
-];
-
-const EMOTION_DISTRIBUTION = [
-  { name: 'Calme', value: 43, color: 'hsl(var(--profit))' },
-  { name: 'Confiant', value: 27, color: 'hsl(var(--primary))' },
-  { name: 'Stressé', value: 19, color: 'hsl(var(--loss))' },
-  { name: 'Impulsif', value: 11, color: 'hsl(30, 100%, 50%)' },
-];
-
-const WEEKLY_EMOTIONS = [
-  { day: 'Lun', calme: 80, stress: 20 },
-  { day: 'Mar', calme: 70, stress: 30 },
-  { day: 'Mer', calme: 40, stress: 60 },
-  { day: 'Jeu', calme: 85, stress: 15 },
-  { day: 'Ven', calme: 55, stress: 45 },
-];
-
-const DISCIPLINE_BREAKDOWN = {
-  score: 78,
-  factors: [
-    { name: 'Respect du plan', score: 85, icon: Target },
-    { name: 'Gestion du risque', score: 80, icon: Zap },
-    { name: 'Pas d\'overtrading', score: 70, icon: AlertTriangle },
-    { name: 'SL toujours en place', score: 90, icon: CheckCircle2 },
-    { name: 'Pas de revenge trading', score: 65, icon: TrendingDown },
-  ],
-};
-
-const MENTAL_SUMMARY = {
-  positives: [
-    'Excellente gestion du risque cette semaine',
-    'Amélioration de la patience sur les entrées',
-    'Meilleur respect du plan de trading',
-  ],
-  negatives: [
-    'Tendance au revenge trading après une perte',
-    'Stress élevé les mercredis (journée chargée?)',
-    'Overtrading en fin de semaine',
-  ],
-};
+const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const PsychologicalAnalysis: React.FC = () => {
   const { language } = useLanguage();
+  const { trades, isLoading } = useTrades();
+
+  // Calculate emotion statistics from real data
+  const emotionStats = useMemo(() => {
+    if (!trades || trades.length === 0) return [];
+
+    const stats: Record<string, { wins: number; losses: number; trades: number }> = {};
+    
+    trades.forEach(trade => {
+      const emotion = trade.emotions || 'Neutre';
+      if (!stats[emotion]) stats[emotion] = { wins: 0, losses: 0, trades: 0 };
+      stats[emotion].trades++;
+      if (trade.result === 'win') stats[emotion].wins++;
+      if (trade.result === 'loss') stats[emotion].losses++;
+    });
+
+    return Object.entries(stats).map(([emotion, data]) => ({
+      emotion,
+      wins: data.trades > 0 ? Math.round((data.wins / data.trades) * 100) : 0,
+      losses: data.trades > 0 ? Math.round((data.losses / data.trades) * 100) : 0,
+      trades: data.trades,
+    })).sort((a, b) => b.trades - a.trades);
+  }, [trades]);
+
+  // Calculate emotion distribution
+  const emotionDistribution = useMemo(() => {
+    if (!trades || trades.length === 0) return [];
+
+    const counts: Record<string, number> = {};
+    trades.forEach(trade => {
+      const emotion = trade.emotions || 'Neutre';
+      counts[emotion] = (counts[emotion] || 0) + 1;
+    });
+
+    const colors: Record<string, string> = {
+      'Calme': 'hsl(var(--profit))',
+      'Confiant': 'hsl(var(--primary))',
+      'Stressé': 'hsl(var(--loss))',
+      'Impulsif': 'hsl(30, 100%, 50%)',
+      'Neutre': 'hsl(var(--muted-foreground))',
+    };
+
+    const total = trades.length;
+    return Object.entries(counts).map(([name, count]) => ({
+      name,
+      value: Math.round((count / total) * 100),
+      color: colors[name] || 'hsl(var(--primary))',
+    }));
+  }, [trades]);
+
+  // Calculate weekly emotion trends
+  const weeklyEmotions = useMemo(() => {
+    if (!trades || trades.length === 0) return [];
+
+    const days = language === 'fr' ? DAYS_FR : DAYS_EN;
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+
+    const dayData: Record<number, { calme: number; stress: number; total: number }> = {};
+    for (let i = 0; i < 7; i++) {
+      dayData[i] = { calme: 0, stress: 0, total: 0 };
+    }
+
+    trades.forEach(trade => {
+      const tradeDate = parseISO(trade.trade_date);
+      if (isWithinInterval(tradeDate, { start: weekStart, end: weekEnd })) {
+        const dayIndex = getDay(tradeDate);
+        dayData[dayIndex].total++;
+        if (trade.emotions === 'Calme' || trade.emotions === 'Confiant') {
+          dayData[dayIndex].calme++;
+        } else if (trade.emotions === 'Stressé' || trade.emotions === 'Impulsif') {
+          dayData[dayIndex].stress++;
+        }
+      }
+    });
+
+    return [1, 2, 3, 4, 5, 6, 0].map(dayIndex => ({
+      day: days[dayIndex],
+      calme: dayData[dayIndex].total > 0 
+        ? Math.round((dayData[dayIndex].calme / dayData[dayIndex].total) * 100) 
+        : 0,
+      stress: dayData[dayIndex].total > 0 
+        ? Math.round((dayData[dayIndex].stress / dayData[dayIndex].total) * 100) 
+        : 0,
+    }));
+  }, [trades, language]);
+
+  // Calculate discipline score
+  const disciplineBreakdown = useMemo(() => {
+    if (!trades || trades.length === 0) {
+      return {
+        score: 0,
+        factors: [
+          { name: language === 'fr' ? 'Respect du plan' : 'Following plan', score: 0, icon: Target },
+          { name: language === 'fr' ? 'Gestion du risque' : 'Risk management', score: 0, icon: Zap },
+          { name: language === 'fr' ? 'Pas d\'overtrading' : 'No overtrading', score: 0, icon: AlertTriangle },
+          { name: language === 'fr' ? 'SL toujours en place' : 'SL always set', score: 0, icon: CheckCircle2 },
+          { name: language === 'fr' ? 'Pas de revenge trading' : 'No revenge trading', score: 0, icon: TrendingDown },
+        ],
+      };
+    }
+
+    // Calculate various discipline factors
+    const tradesWithSL = trades.filter(t => t.stop_loss).length;
+    const tradesWithTP = trades.filter(t => t.take_profit).length;
+    const tradesWithSetup = trades.filter(t => t.setup).length;
+    
+    const slScore = Math.round((tradesWithSL / trades.length) * 100);
+    const tpScore = Math.round((tradesWithTP / trades.length) * 100);
+    const setupScore = Math.round((tradesWithSetup / trades.length) * 100);
+    
+    // Overtrading: assume max 5 trades per day is healthy
+    const tradesByDay: Record<string, number> = {};
+    trades.forEach(t => {
+      const day = t.trade_date.split('T')[0];
+      tradesByDay[day] = (tradesByDay[day] || 0) + 1;
+    });
+    const avgTradesPerDay = Object.values(tradesByDay).length > 0
+      ? Object.values(tradesByDay).reduce((a, b) => a + b, 0) / Object.values(tradesByDay).length
+      : 0;
+    const overtradingScore = Math.max(0, 100 - (avgTradesPerDay > 5 ? (avgTradesPerDay - 5) * 20 : 0));
+
+    // Revenge trading: consecutive losses with increasing position size would indicate this
+    // For now, use a simpler heuristic based on calm trades ratio
+    const calmTrades = trades.filter(t => t.emotions === 'Calme' || t.emotions === 'Confiant').length;
+    const revengeScore = Math.round((calmTrades / trades.length) * 100);
+
+    const overallScore = Math.round((slScore + tpScore + setupScore + overtradingScore + revengeScore) / 5);
+
+    return {
+      score: overallScore,
+      factors: [
+        { name: language === 'fr' ? 'Respect du plan' : 'Following plan', score: setupScore, icon: Target },
+        { name: language === 'fr' ? 'Gestion du risque' : 'Risk management', score: tpScore, icon: Zap },
+        { name: language === 'fr' ? 'Pas d\'overtrading' : 'No overtrading', score: Math.round(overtradingScore), icon: AlertTriangle },
+        { name: language === 'fr' ? 'SL toujours en place' : 'SL always set', score: slScore, icon: CheckCircle2 },
+        { name: language === 'fr' ? 'Pas de revenge trading' : 'No revenge trading', score: revengeScore, icon: TrendingDown },
+      ],
+    };
+  }, [trades, language]);
+
+  // Generate mental summary based on data
+  const mentalSummary = useMemo(() => {
+    if (!trades || trades.length === 0) {
+      return { positives: [], negatives: [] };
+    }
+
+    const positives: string[] = [];
+    const negatives: string[] = [];
+
+    // Analyze data for insights
+    const tradesWithSL = trades.filter(t => t.stop_loss).length;
+    if (tradesWithSL / trades.length >= 0.8) {
+      positives.push(language === 'fr' ? 'Excellente gestion du risque avec SL' : 'Excellent risk management with SL');
+    } else if (tradesWithSL / trades.length < 0.5) {
+      negatives.push(language === 'fr' ? 'Améliorer l\'utilisation du Stop Loss' : 'Improve Stop Loss usage');
+    }
+
+    const calmTrades = trades.filter(t => t.emotions === 'Calme').length;
+    if (calmTrades / trades.length >= 0.5) {
+      positives.push(language === 'fr' ? 'Bonne maîtrise émotionnelle' : 'Good emotional control');
+    }
+
+    const stressedTrades = trades.filter(t => t.emotions === 'Stressé' || t.emotions === 'Impulsif').length;
+    if (stressedTrades / trades.length >= 0.3) {
+      negatives.push(language === 'fr' ? 'Tendance au trading sous stress' : 'Tendency to trade under stress');
+    }
+
+    const winrate = trades.filter(t => t.result === 'win').length / trades.length;
+    if (winrate >= 0.6) {
+      positives.push(language === 'fr' ? 'Excellent taux de réussite' : 'Excellent win rate');
+    } else if (winrate < 0.4) {
+      negatives.push(language === 'fr' ? 'Revoir la stratégie d\'entrée' : 'Review entry strategy');
+    }
+
+    if (positives.length === 0) {
+      positives.push(language === 'fr' ? 'Continuez à trader pour générer des insights' : 'Continue trading to generate insights');
+    }
+    if (negatives.length === 0) {
+      negatives.push(language === 'fr' ? 'Aucun point d\'amélioration majeur détecté' : 'No major improvement points detected');
+    }
+
+    return { positives, negatives };
+  }, [trades, language]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const hasNoData = !trades || trades.length === 0;
 
   return (
     <div className="py-4 space-y-6">
@@ -84,278 +238,275 @@ const PsychologicalAnalysis: React.FC = () => {
         </div>
       </div>
 
-      {/* Discipline Score */}
-      <div className="glass-card p-6 animate-fade-in">
-        <div className="flex flex-col md:flex-row items-center gap-8">
-          <div className="flex-shrink-0">
-            <GaugeChart
-              value={DISCIPLINE_BREAKDOWN.score}
-              max={100}
-              label={language === 'fr' ? 'Discipline' : 'Discipline'}
-              size="lg"
-              variant="primary"
-            />
-          </div>
-          <div className="flex-1 w-full">
-            <h3 className="font-display font-semibold text-foreground mb-4">
-              {language === 'fr' ? 'Facteurs de Discipline' : 'Discipline Factors'}
-            </h3>
-            <div className="space-y-4">
-              {DISCIPLINE_BREAKDOWN.factors.map((factor) => {
-                const Icon = factor.icon;
-                return (
-                  <div key={factor.name}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-foreground">{factor.name}</span>
+      {hasNoData ? (
+        <div className="glass-card p-12 text-center animate-fade-in">
+          <Brain className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+          <h3 className="text-xl font-display font-semibold text-foreground mb-2">
+            {language === 'fr' ? 'Aucune donnée' : 'No data yet'}
+          </h3>
+          <p className="text-muted-foreground">
+            {language === 'fr' 
+              ? 'Ajoutez des trades avec vos émotions pour voir l\'analyse psychologique'
+              : 'Add trades with your emotions to see psychological analysis'}
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Discipline Score */}
+          <div className="glass-card p-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-shrink-0">
+                <GaugeChart
+                  value={disciplineBreakdown.score}
+                  max={100}
+                  label={language === 'fr' ? 'Discipline' : 'Discipline'}
+                  size="lg"
+                  variant="primary"
+                />
+              </div>
+              <div className="flex-1 w-full">
+                <h3 className="font-display font-semibold text-foreground mb-4">
+                  {language === 'fr' ? 'Facteurs de Discipline' : 'Discipline Factors'}
+                </h3>
+                <div className="space-y-4">
+                  {disciplineBreakdown.factors.map((factor) => {
+                    const Icon = factor.icon;
+                    return (
+                      <div key={factor.name}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Icon className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm text-foreground">{factor.name}</span>
+                          </div>
+                          <span className={cn(
+                            "text-sm font-medium",
+                            factor.score >= 80 ? "text-profit" :
+                            factor.score >= 60 ? "text-primary" : "text-loss"
+                          )}>
+                            {factor.score}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={factor.score}
+                          className={cn(
+                            "h-2",
+                            factor.score >= 80 ? "[&>div]:bg-profit" :
+                            factor.score >= 60 ? "[&>div]:bg-primary" : "[&>div]:bg-loss"
+                          )}
+                        />
                       </div>
-                      <span className={cn(
-                        "text-sm font-medium",
-                        factor.score >= 80 ? "text-profit" :
-                        factor.score >= 60 ? "text-primary" : "text-loss"
-                      )}>
-                        {factor.score}%
-                      </span>
-                    </div>
-                    <Progress
-                      value={factor.score}
-                      className={cn(
-                        "h-2",
-                        factor.score >= 80 ? "[&>div]:bg-profit" :
-                        factor.score >= 60 ? "[&>div]:bg-primary" : "[&>div]:bg-loss"
-                      )}
-                    />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Emotion Stats Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Winrate by Emotion */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '100ms' }}>
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {language === 'fr' ? 'Winrate par Émotion' : 'Winrate by Emotion'}
+              </h3>
+              {emotionStats.length > 0 ? (
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={emotionStats} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis type="number" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis dataKey="emotion" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, '']}
+                      />
+                      <Bar dataKey="wins" fill="hsl(var(--profit))" name="Gains" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                  {language === 'fr' ? 'Pas de données' : 'No data'}
+                </div>
+              )}
+            </div>
+
+            {/* Emotion Distribution */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '150ms' }}>
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {language === 'fr' ? 'Répartition des Émotions' : 'Emotion Distribution'}
+              </h3>
+              {emotionDistribution.length > 0 ? (
+                <>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={emotionDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {emotionDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => [`${value}%`, '']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                );
-              })}
+                  <div className="flex flex-wrap justify-center gap-3 mt-2">
+                    {emotionDistribution.map((emotion) => (
+                      <div key={emotion.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotion.color }} />
+                        <span className="text-xs text-muted-foreground">{emotion.name} ({emotion.value}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  {language === 'fr' ? 'Pas de données' : 'No data'}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Emotion Stats Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Winrate by Emotion */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '100ms' }}>
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {language === 'fr' ? 'Winrate par Émotion' : 'Winrate by Emotion'}
-          </h3>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={EMOTION_STATS} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis dataKey="emotion" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number) => [`${value}%`, '']}
-                />
-                <Bar dataKey="wins" fill="hsl(var(--profit))" name="Gains" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Weekly Emotion Trend */}
+          <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
+            <h3 className="font-display font-semibold text-foreground mb-4">
+              {language === 'fr' ? 'Tendance Émotionnelle (Semaine)' : 'Emotional Trend (Week)'}
+            </h3>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyEmotions}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="calme"
+                    stroke="hsl(var(--profit))"
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--profit))' }}
+                    name={language === 'fr' ? 'Calme' : 'Calm'}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="stress"
+                    stroke="hsl(var(--loss))"
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--loss))' }}
+                    name="Stress"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-profit" />
+                <span className="text-xs text-muted-foreground">{language === 'fr' ? 'Calme' : 'Calm'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-loss" />
+                <span className="text-xs text-muted-foreground">Stress</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Emotion Distribution */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '150ms' }}>
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {language === 'fr' ? 'Répartition des Émotions' : 'Emotion Distribution'}
-          </h3>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={EMOTION_DISTRIBUTION}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
+          {/* Emotion Performance Cards */}
+          {emotionStats.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {emotionStats.slice(0, 4).map((stat, index) => (
+                <div
+                  key={stat.emotion}
+                  className="glass-card p-4 animate-fade-in"
+                  style={{ animationDelay: `${250 + index * 50}ms` }}
                 >
-                  {EMOTION_DISTRIBUTION.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number) => [`${value}%`, '']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-2">
-            {EMOTION_DISTRIBUTION.map((emotion) => (
-              <div key={emotion.name} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotion.color }} />
-                <span className="text-xs text-muted-foreground">{emotion.name} ({emotion.value}%)</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Weekly Emotion Trend */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
-        <h3 className="font-display font-semibold text-foreground mb-4">
-          {language === 'fr' ? 'Tendance Émotionnelle (Semaine)' : 'Emotional Trend (Week)'}
-        </h3>
-        <div className="h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={WEEKLY_EMOTIONS}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="calme"
-                stroke="hsl(var(--profit))"
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--profit))' }}
-                name={language === 'fr' ? 'Calme' : 'Calm'}
-              />
-              <Line
-                type="monotone"
-                dataKey="stress"
-                stroke="hsl(var(--loss))"
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--loss))' }}
-                name="Stress"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex justify-center gap-6 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-profit" />
-            <span className="text-xs text-muted-foreground">{language === 'fr' ? 'Calme' : 'Calm'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-loss" />
-            <span className="text-xs text-muted-foreground">Stress</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Emotion Performance Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {EMOTION_STATS.map((stat, index) => (
-          <div
-            key={stat.emotion}
-            className="glass-card p-4 animate-fade-in"
-            style={{ animationDelay: `${250 + index * 50}ms` }}
-          >
-            <p className="text-sm text-muted-foreground mb-2">{stat.emotion}</p>
-            <p className={cn(
-              "font-display text-2xl font-bold",
-              stat.wins >= 60 ? "text-profit" : stat.wins >= 40 ? "text-primary" : "text-loss"
-            )}>
-              {stat.wins}%
-            </p>
-            <p className="text-xs text-muted-foreground">{stat.trades} trades</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Mental Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Positives */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '400ms' }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-profit/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-profit" />
+                  <p className="text-sm text-muted-foreground mb-2">{stat.emotion}</p>
+                  <p className={cn(
+                    "font-display text-2xl font-bold",
+                    stat.wins >= 60 ? "text-profit" : stat.wins >= 40 ? "text-primary" : "text-loss"
+                  )}>
+                    {stat.wins}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">{stat.trades} trades</p>
+                </div>
+              ))}
             </div>
-            <h3 className="font-display font-semibold text-foreground">
-              {language === 'fr' ? 'Points Forts' : 'Strengths'}
-            </h3>
-          </div>
-          <div className="space-y-3">
-            {MENTAL_SUMMARY.positives.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-2 p-3 rounded-lg bg-profit/10 border border-profit/30"
-              >
-                <CheckCircle2 className="w-4 h-4 text-profit mt-0.5" />
-                <p className="text-sm text-foreground">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+          )}
 
-        {/* Negatives */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '450ms' }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-loss/20 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-loss" />
+          {/* Mental Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Positives */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '400ms' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-profit/20 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-profit" />
+                </div>
+                <h3 className="font-display font-semibold text-foreground">
+                  {language === 'fr' ? 'Points Forts' : 'Strengths'}
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {mentalSummary.positives.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-2 p-3 rounded-lg bg-profit/10 border border-profit/30"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-profit mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground">{item}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <h3 className="font-display font-semibold text-foreground">
-              {language === 'fr' ? 'Points à Améliorer' : 'Areas to Improve'}
-            </h3>
-          </div>
-          <div className="space-y-3">
-            {MENTAL_SUMMARY.negatives.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-2 p-3 rounded-lg bg-loss/10 border border-loss/30"
-              >
-                <AlertTriangle className="w-4 h-4 text-loss mt-0.5" />
-                <p className="text-sm text-foreground">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
-      {/* Auto-generated Feedback */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '500ms' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Brain className="w-5 h-5 text-primary" />
+            {/* Negatives */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '450ms' }}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-loss/20 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-loss" />
+                </div>
+                <h3 className="font-display font-semibold text-foreground">
+                  {language === 'fr' ? 'Points à Améliorer' : 'Areas to Improve'}
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {mentalSummary.negatives.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-2 p-3 rounded-lg bg-loss/10 border border-loss/30"
+                  >
+                    <AlertTriangle className="w-4 h-4 text-loss mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Feedback Automatique' : 'Automatic Feedback'}
-          </h3>
-        </div>
-        <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
-            <p className="text-sm text-foreground">
-              🧠 {language === 'fr'
-                ? 'Tu performes nettement mieux quand tu es calme (+75% winrate). Prends 5 minutes de respiration avant chaque session.'
-                : 'You perform significantly better when calm (+75% winrate). Take 5 minutes to breathe before each session.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-loss/10 border border-loss/30">
-            <p className="text-sm text-foreground">
-              ⚠️ {language === 'fr'
-                ? 'Le revenge trading te coûte en moyenne 3.2% par semaine. Après une perte, fais une pause de 30 minutes.'
-                : 'Revenge trading costs you an average of 3.2% per week. After a loss, take a 30-minute break.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-profit/10 border border-profit/30">
-            <p className="text-sm text-foreground">
-              ✓ {language === 'fr'
-                ? 'Ta discipline s\'améliore (+8% ce mois). Continue sur cette lancée!'
-                : 'Your discipline is improving (+8% this month). Keep up the momentum!'}
-            </p>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

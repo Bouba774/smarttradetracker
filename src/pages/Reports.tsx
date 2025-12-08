@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTrades } from '@/hooks/useTrades';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addMonths, isWithinInterval, parseISO, getDay, subWeeks } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -20,58 +21,17 @@ import {
   Brain,
   Award,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
-
-// Mock data - to be replaced with real data
-const MOCK_WEEKLY_DATA = {
-  winrate: 68,
-  pnl: 1245.50,
-  totalTrades: 23,
-  winningTrades: 16,
-  losingTrades: 7,
-  bestSetup: 'Breakout',
-  bestAsset: 'EUR/USD',
-  dominantEmotion: 'Calme',
-  bestDay: { day: 'Mardi', pnl: 450 },
-  worstDay: { day: 'Vendredi', pnl: -120 },
-  avgRR: 2.3,
-  disciplineScore: 82,
-};
-
-const MOCK_DAILY_PNL = [
-  { day: 'Lun', pnl: 320 },
-  { day: 'Mar', pnl: 450 },
-  { day: 'Mer', pnl: -85 },
-  { day: 'Jeu', pnl: 280 },
-  { day: 'Ven', pnl: -120 },
-  { day: 'Sam', pnl: 200 },
-  { day: 'Dim', pnl: 200.50 },
-];
-
-const MOCK_MONTHLY_DATA = [
-  { month: 'Sep', pnl: 2340 },
-  { month: 'Oct', pnl: -580 },
-  { month: 'Nov', pnl: 1890 },
-  { month: 'Déc', pnl: 1245 },
-];
-
-const MOCK_EMOTION_DATA = [
-  { name: 'Calme', value: 45, color: 'hsl(var(--profit))' },
-  { name: 'Confiant', value: 25, color: 'hsl(var(--primary))' },
-  { name: 'Stressé', value: 20, color: 'hsl(var(--loss))' },
-  { name: 'Impulsif', value: 10, color: 'hsl(30, 100%, 50%)' },
-];
-
-const MOCK_PSYCHOLOGICAL_EVOLUTION = [
-  { month: 'Oct', discipline: 65, emotions: 55, quality: 60 },
-  { month: 'Nov', discipline: 72, emotions: 68, quality: 70 },
-  { month: 'Déc', discipline: 82, emotions: 75, quality: 78 },
-];
 
 type ViewMode = 'week' | 'month';
 
+const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const Reports: React.FC = () => {
   const { language, t } = useLanguage();
+  const { trades, isLoading } = useTrades();
   const locale = language === 'fr' ? fr : enUS;
   
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -104,7 +64,201 @@ const Reports: React.FC = () => {
     return format(selectedDate, 'MMMM yyyy', { locale });
   };
 
-  const data = MOCK_WEEKLY_DATA;
+  // Filter trades for selected period
+  const periodTrades = useMemo(() => {
+    if (!trades) return [];
+    return trades.filter(trade => {
+      const tradeDate = parseISO(trade.trade_date);
+      return isWithinInterval(tradeDate, { start: periodStart, end: periodEnd });
+    });
+  }, [trades, periodStart, periodEnd]);
+
+  // Calculate statistics from real data
+  const stats = useMemo(() => {
+    if (periodTrades.length === 0) {
+      return {
+        winrate: 0,
+        pnl: 0,
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        bestSetup: '-',
+        bestAsset: '-',
+        dominantEmotion: '-',
+        bestDay: { day: '-', pnl: 0 },
+        worstDay: { day: '-', pnl: 0 },
+        avgRR: 0,
+        disciplineScore: 0,
+      };
+    }
+
+    const winningTrades = periodTrades.filter(t => t.result === 'win').length;
+    const losingTrades = periodTrades.filter(t => t.result === 'loss').length;
+    const winrate = periodTrades.length > 0 ? Math.round((winningTrades / periodTrades.length) * 100) : 0;
+    const pnl = periodTrades.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
+
+    // Calculate by day
+    const days = language === 'fr' ? DAYS_FR : DAYS_EN;
+    const dayStats: Record<number, { pnl: number; count: number }> = {};
+    periodTrades.forEach(trade => {
+      const dayIndex = getDay(parseISO(trade.trade_date));
+      if (!dayStats[dayIndex]) dayStats[dayIndex] = { pnl: 0, count: 0 };
+      dayStats[dayIndex].pnl += trade.profit_loss || 0;
+      dayStats[dayIndex].count++;
+    });
+
+    let bestDay = { day: '-', pnl: 0 };
+    let worstDay = { day: '-', pnl: 0 };
+    Object.entries(dayStats).forEach(([dayIndex, data]) => {
+      if (data.pnl > bestDay.pnl) bestDay = { day: days[parseInt(dayIndex)], pnl: data.pnl };
+      if (data.pnl < worstDay.pnl) worstDay = { day: days[parseInt(dayIndex)], pnl: data.pnl };
+    });
+
+    // Best setup
+    const setupStats: Record<string, { wins: number; total: number }> = {};
+    periodTrades.forEach(trade => {
+      const setup = trade.setup || 'Other';
+      if (!setupStats[setup]) setupStats[setup] = { wins: 0, total: 0 };
+      setupStats[setup].total++;
+      if (trade.result === 'win') setupStats[setup].wins++;
+    });
+    let bestSetup = '-';
+    let bestSetupWinrate = 0;
+    Object.entries(setupStats).forEach(([setup, data]) => {
+      const wr = data.total > 0 ? data.wins / data.total : 0;
+      if (wr > bestSetupWinrate && data.total >= 2) {
+        bestSetupWinrate = wr;
+        bestSetup = setup;
+      }
+    });
+
+    // Best asset
+    const assetStats: Record<string, number> = {};
+    periodTrades.forEach(trade => {
+      if (!assetStats[trade.asset]) assetStats[trade.asset] = 0;
+      assetStats[trade.asset] += trade.profit_loss || 0;
+    });
+    let bestAsset = '-';
+    let bestAssetPnl = -Infinity;
+    Object.entries(assetStats).forEach(([asset, pnlVal]) => {
+      if (pnlVal > bestAssetPnl) {
+        bestAssetPnl = pnlVal;
+        bestAsset = asset;
+      }
+    });
+
+    // Dominant emotion
+    const emotionCounts: Record<string, number> = {};
+    periodTrades.forEach(trade => {
+      const emotion = trade.emotions || 'Neutre';
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+    let dominantEmotion = '-';
+    let maxEmotionCount = 0;
+    Object.entries(emotionCounts).forEach(([emotion, count]) => {
+      if (count > maxEmotionCount) {
+        maxEmotionCount = count;
+        dominantEmotion = emotion;
+      }
+    });
+
+    // Discipline score (based on having SL and TP)
+    const tradesWithSL = periodTrades.filter(t => t.stop_loss).length;
+    const tradesWithTP = periodTrades.filter(t => t.take_profit).length;
+    const disciplineScore = periodTrades.length > 0
+      ? Math.round(((tradesWithSL + tradesWithTP) / (periodTrades.length * 2)) * 100)
+      : 0;
+
+    return {
+      winrate,
+      pnl,
+      totalTrades: periodTrades.length,
+      winningTrades,
+      losingTrades,
+      bestSetup,
+      bestAsset,
+      dominantEmotion,
+      bestDay,
+      worstDay,
+      avgRR: 0,
+      disciplineScore,
+    };
+  }, [periodTrades, language]);
+
+  // Daily PnL data
+  const dailyPnL = useMemo(() => {
+    const days = language === 'fr' ? DAYS_FR : DAYS_EN;
+    const dayData: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    
+    periodTrades.forEach(trade => {
+      const dayIndex = getDay(parseISO(trade.trade_date));
+      dayData[dayIndex] += trade.profit_loss || 0;
+    });
+
+    return [1, 2, 3, 4, 5, 6, 0].map(dayIndex => ({
+      day: days[dayIndex],
+      pnl: Math.round(dayData[dayIndex] * 100) / 100,
+    }));
+  }, [periodTrades, language]);
+
+  // Emotion distribution
+  const emotionDistribution = useMemo(() => {
+    const emotionCounts: Record<string, number> = {};
+    periodTrades.forEach(trade => {
+      const emotion = trade.emotions || 'Neutre';
+      emotionCounts[emotion] = (emotionCounts[emotion] || 0) + 1;
+    });
+
+    const colors: Record<string, string> = {
+      'Calme': 'hsl(var(--profit))',
+      'Confiant': 'hsl(var(--primary))',
+      'Stressé': 'hsl(var(--loss))',
+      'Impulsif': 'hsl(30, 100%, 50%)',
+      'Neutre': 'hsl(var(--muted-foreground))',
+    };
+
+    const total = Object.values(emotionCounts).reduce((sum, count) => sum + count, 0);
+    return Object.entries(emotionCounts).map(([name, count]) => ({
+      name,
+      value: total > 0 ? Math.round((count / total) * 100) : 0,
+      color: colors[name] || 'hsl(var(--primary))',
+    }));
+  }, [periodTrades]);
+
+  // Monthly performance (last 4 months)
+  const monthlyData = useMemo(() => {
+    if (!trades) return [];
+    const months: { month: string; pnl: number }[] = [];
+    
+    for (let i = 3; i >= 0; i--) {
+      const monthDate = subMonths(new Date(), i);
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
+      
+      const monthTrades = trades.filter(trade => {
+        const tradeDate = parseISO(trade.trade_date);
+        return isWithinInterval(tradeDate, { start: monthStart, end: monthEnd });
+      });
+      
+      const pnl = monthTrades.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
+      months.push({
+        month: format(monthDate, 'MMM', { locale }),
+        pnl: Math.round(pnl * 100) / 100,
+      });
+    }
+    
+    return months;
+  }, [trades, locale]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const hasNoData = !trades || trades.length === 0;
 
   return (
     <div className="py-4 space-y-6">
@@ -181,269 +335,231 @@ const Reports: React.FC = () => {
         </div>
       </div>
 
-      {/* Key Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-card p-4 animate-fade-in">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Winrate</span>
-          </div>
-          <p className="font-display text-2xl font-bold text-profit">{data.winrate}%</p>
-        </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '50ms' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-profit" />
-            <span className="text-xs text-muted-foreground">PnL</span>
-          </div>
-          <p className={cn(
-            "font-display text-2xl font-bold",
-            data.pnl >= 0 ? "text-profit" : "text-loss"
-          )}>
-            {data.pnl >= 0 ? '+' : ''}{data.pnl.toFixed(2)}$
+      {hasNoData ? (
+        <div className="glass-card p-12 text-center animate-fade-in">
+          <FileText className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+          <h3 className="text-xl font-display font-semibold text-foreground mb-2">
+            {language === 'fr' ? 'Aucune donnée' : 'No data yet'}
+          </h3>
+          <p className="text-muted-foreground">
+            {language === 'fr' 
+              ? 'Ajoutez des trades pour voir vos rapports de performance'
+              : 'Add trades to see your performance reports'}
           </p>
         </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Award className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Trades</span>
-          </div>
-          <p className="font-display text-2xl font-bold text-foreground">{data.totalTrades}</p>
-          <p className="text-xs text-muted-foreground">
-            <span className="text-profit">{data.winningTrades}W</span> / <span className="text-loss">{data.losingTrades}L</span>
-          </p>
-        </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '150ms' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Discipline</span>
-          </div>
-          <p className="font-display text-2xl font-bold text-primary">{data.disciplineScore}/100</p>
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily PnL */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {language === 'fr' ? 'PnL Journalier' : 'Daily PnL'}
-          </h3>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_DAILY_PNL}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value}$`, 'PnL']}
-                />
-                <Bar 
-                  dataKey="pnl" 
-                  fill="hsl(var(--primary))"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Emotion Distribution */}
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '250ms' }}>
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {language === 'fr' ? 'Répartition Émotionnelle' : 'Emotion Distribution'}
-          </h3>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={MOCK_EMOTION_DATA}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {MOCK_EMOTION_DATA.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number) => [`${value}%`, '']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3 mt-2">
-            {MOCK_EMOTION_DATA.map((emotion) => (
-              <div key={emotion.name} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotion.color }} />
-                <span className="text-xs text-muted-foreground">{emotion.name}</span>
+      ) : (
+        <>
+          {/* Key Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-card p-4 animate-fade-in">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Winrate</span>
               </div>
-            ))}
+              <p className={cn("font-display text-2xl font-bold", stats.winrate >= 50 ? "text-profit" : "text-loss")}>
+                {stats.winrate}%
+              </p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '50ms' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-profit" />
+                <span className="text-xs text-muted-foreground">PnL</span>
+              </div>
+              <p className={cn("font-display text-2xl font-bold", stats.pnl >= 0 ? "text-profit" : "text-loss")}>
+                {stats.pnl >= 0 ? '+' : ''}{stats.pnl.toFixed(2)}$
+              </p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Trades</span>
+              </div>
+              <p className="font-display text-2xl font-bold text-foreground">{stats.totalTrades}</p>
+              <p className="text-xs text-muted-foreground">
+                <span className="text-profit">{stats.winningTrades}W</span> / <span className="text-loss">{stats.losingTrades}L</span>
+              </p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '150ms' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Discipline</span>
+              </div>
+              <p className="font-display text-2xl font-bold text-primary">{stats.disciplineScore}/100</p>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Best/Worst Analysis */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-profit" />
-            <span className="text-sm font-medium text-foreground">
-              {language === 'fr' ? 'Meilleur Jour' : 'Best Day'}
-            </span>
-          </div>
-          <p className="font-display text-lg font-bold text-profit">{data.bestDay.day}</p>
-          <p className="text-sm text-muted-foreground">+{data.bestDay.pnl}$</p>
-        </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '350ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingDown className="w-4 h-4 text-loss" />
-            <span className="text-sm font-medium text-foreground">
-              {language === 'fr' ? 'Pire Jour' : 'Worst Day'}
-            </span>
-          </div>
-          <p className="font-display text-lg font-bold text-loss">{data.worstDay.day}</p>
-          <p className="text-sm text-muted-foreground">{data.worstDay.pnl}$</p>
-        </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '400ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Award className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">
-              {language === 'fr' ? 'Meilleur Setup' : 'Best Setup'}
-            </span>
-          </div>
-          <p className="font-display text-lg font-bold text-primary">{data.bestSetup}</p>
-          <p className="text-sm text-muted-foreground">{data.bestAsset}</p>
-        </div>
-        <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '450ms' }}>
-          <div className="flex items-center gap-2 mb-3">
-            <Brain className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">
-              {language === 'fr' ? 'Émotion Dominante' : 'Dominant Emotion'}
-            </span>
-          </div>
-          <p className="font-display text-lg font-bold text-foreground">{data.dominantEmotion}</p>
-          <p className="text-sm text-muted-foreground">R:R {data.avgRR}</p>
-        </div>
-      </div>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Daily PnL */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {language === 'fr' ? 'PnL Journalier' : 'Daily PnL'}
+              </h3>
+              {periodTrades.length > 0 ? (
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyPnL}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value}$`, 'PnL']}
+                      />
+                      <Bar 
+                        dataKey="pnl" 
+                        radius={[4, 4, 0, 0]}
+                      >
+                        {dailyPnL.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.pnl >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  {language === 'fr' ? 'Pas de trades sur cette période' : 'No trades in this period'}
+                </div>
+              )}
+            </div>
 
-      {/* Monthly Performance (visible in month view) */}
-      {viewMode === 'month' && (
-        <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '500ms' }}>
-          <h3 className="font-display font-semibold text-foreground mb-4">
-            {language === 'fr' ? 'Performance Mensuelle' : 'Monthly Performance'}
-          </h3>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_MONTHLY_DATA}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                  }}
-                  formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value}$`, 'PnL']}
-                />
-                <Bar 
-                  dataKey="pnl" 
-                  radius={[4, 4, 0, 0]}
-                >
-                  {MOCK_MONTHLY_DATA.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.pnl >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))'} 
+            {/* Emotion Distribution */}
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '250ms' }}>
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {language === 'fr' ? 'Répartition Émotionnelle' : 'Emotion Distribution'}
+              </h3>
+              {emotionDistribution.length > 0 ? (
+                <>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={emotionDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {emotionDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px',
+                          }}
+                          formatter={(value: number) => [`${value}%`, '']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3 mt-2">
+                    {emotionDistribution.map((emotion) => (
+                      <div key={emotion.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: emotion.color }} />
+                        <span className="text-xs text-muted-foreground">{emotion.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  {language === 'fr' ? 'Pas de données émotionnelles' : 'No emotion data'}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Best/Worst Analysis */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-profit" />
+                <span className="text-sm font-medium text-foreground">
+                  {language === 'fr' ? 'Meilleur Jour' : 'Best Day'}
+                </span>
+              </div>
+              <p className="font-display text-lg font-bold text-profit">{stats.bestDay.day}</p>
+              <p className="text-sm text-muted-foreground">+{stats.bestDay.pnl.toFixed(2)}$</p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '350ms' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingDown className="w-4 h-4 text-loss" />
+                <span className="text-sm font-medium text-foreground">
+                  {language === 'fr' ? 'Pire Jour' : 'Worst Day'}
+                </span>
+              </div>
+              <p className="font-display text-lg font-bold text-loss">{stats.worstDay.day}</p>
+              <p className="text-sm text-muted-foreground">{stats.worstDay.pnl.toFixed(2)}$</p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '400ms' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Award className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  {language === 'fr' ? 'Meilleur Setup' : 'Best Setup'}
+                </span>
+              </div>
+              <p className="font-display text-lg font-bold text-primary">{stats.bestSetup}</p>
+              <p className="text-sm text-muted-foreground">{stats.bestAsset}</p>
+            </div>
+            <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '450ms' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  {language === 'fr' ? 'Émotion Dominante' : 'Dominant Emotion'}
+                </span>
+              </div>
+              <p className="font-display text-lg font-bold text-foreground">{stats.dominantEmotion}</p>
+            </div>
+          </div>
+
+          {/* Monthly Performance (visible in month view) */}
+          {viewMode === 'month' && monthlyData.length > 0 && (
+            <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '500ms' }}>
+              <h3 className="font-display font-semibold text-foreground mb-4">
+                {language === 'fr' ? 'Performance Mensuelle' : 'Monthly Performance'}
+              </h3>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value}$`, 'PnL']}
                     />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+                    <Bar 
+                      dataKey="pnl" 
+                      radius={[4, 4, 0, 0]}
+                    >
+                      {monthlyData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.pnl >= 0 ? 'hsl(var(--profit))' : 'hsl(var(--loss))'} 
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
       )}
-
-      {/* Psychological Evolution (3 months) */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '550ms' }}>
-        <h3 className="font-display font-semibold text-foreground mb-4">
-          {language === 'fr' ? 'Évolution Psychologique (3 derniers mois)' : 'Psychological Evolution (Last 3 Months)'}
-        </h3>
-        <div className="h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={MOCK_PSYCHOLOGICAL_EVOLUTION}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                }}
-              />
-              <Line type="monotone" dataKey="discipline" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} name="Discipline" />
-              <Line type="monotone" dataKey="emotions" stroke="hsl(var(--profit))" strokeWidth={2} dot={{ fill: 'hsl(var(--profit))' }} name="Émotions" />
-              <Line type="monotone" dataKey="quality" stroke="hsl(30, 100%, 50%)" strokeWidth={2} dot={{ fill: 'hsl(30, 100%, 50%)' }} name="Qualité" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex justify-center gap-6 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span className="text-xs text-muted-foreground">Discipline</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-profit" />
-            <span className="text-xs text-muted-foreground">Émotions</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'hsl(30, 100%, 50%)' }} />
-            <span className="text-xs text-muted-foreground">Qualité</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Automatic Insights */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '600ms' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5 text-primary" />
-          </div>
-          <h3 className="font-display font-semibold text-foreground">
-            {language === 'fr' ? 'Conseils Automatiques' : 'Automatic Insights'}
-          </h3>
-        </div>
-        <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-profit/10 border border-profit/30">
-            <p className="text-sm text-profit">
-              ✓ {language === 'fr' ? 'Tu performes mieux entre 9h et 11h. Concentre-toi sur cette période.' : 'You perform best between 9am and 11am. Focus on this period.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
-            <p className="text-sm text-primary">
-              💡 {language === 'fr' ? 'Le setup "Breakout" est ton plus rentable cette semaine.' : 'The "Breakout" setup is your most profitable this week.'}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg bg-loss/10 border border-loss/30">
-            <p className="text-sm text-loss">
-              ⚠ {language === 'fr' ? 'Évite de trader quand tu es stressé. Tu perds 65% de ces trades.' : 'Avoid trading when stressed. You lose 65% of those trades.'}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
