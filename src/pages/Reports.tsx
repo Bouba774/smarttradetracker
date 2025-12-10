@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTrades } from '@/hooks/useTrades';
+import { useCurrency } from '@/hooks/useCurrency';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -32,6 +33,7 @@ const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const Reports: React.FC = () => {
   const { language, t } = useLanguage();
   const { trades, isLoading } = useTrades();
+  const { formatAmount, getCurrencySymbol } = useCurrency();
   const locale = language === 'fr' ? fr : enUS;
   
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -366,7 +368,7 @@ const Reports: React.FC = () => {
                 <span className="text-xs text-muted-foreground">PnL</span>
               </div>
               <p className={cn("font-display text-2xl font-bold", stats.pnl >= 0 ? "text-profit" : "text-loss")}>
-                {stats.pnl >= 0 ? '+' : ''}{stats.pnl.toFixed(2)}$
+                {formatAmount(stats.pnl, true)}
               </p>
             </div>
             <div className="glass-card p-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
@@ -408,7 +410,7 @@ const Reports: React.FC = () => {
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
                         }}
-                        formatter={(value: number) => [`${value >= 0 ? '+' : ''}${value}$`, 'PnL']}
+                        formatter={(value: number) => [formatAmount(value, true), 'PnL']}
                       />
                       <Bar 
                         dataKey="pnl" 

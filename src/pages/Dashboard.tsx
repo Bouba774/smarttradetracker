@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChallenges } from '@/hooks/useChallenges';
 import { useTrades } from '@/hooks/useTrades';
 import { useAdvancedStats } from '@/hooks/useAdvancedStats';
+import { useCurrency } from '@/hooks/useCurrency';
 import StatCard from '@/components/ui/StatCard';
 import GaugeChart from '@/components/ui/GaugeChart';
 import {
@@ -57,6 +58,7 @@ const Dashboard: React.FC = () => {
   const { currentLevel } = useChallenges();
   const { trades, isLoading } = useTrades();
   const stats = useAdvancedStats(trades);
+  const { formatAmount } = useCurrency();
 
   // User profile from auth
   const userNickname = profile?.nickname || 'Trader';
@@ -279,42 +281,42 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             title="Meilleur Profit"
-            value={`$${stats.bestProfit.toLocaleString()}`}
+            value={formatAmount(stats.bestProfit)}
             icon={Trophy}
             variant="profit"
             delay={700}
           />
           <StatCard
             title="Pire Perte"
-            value={`$${stats.worstLoss.toLocaleString()}`}
+            value={formatAmount(stats.worstLoss)}
             icon={AlertTriangle}
             variant="loss"
             delay={750}
           />
           <StatCard
             title="Profit Moyen"
-            value={`$${stats.avgProfitPerTrade.toFixed(2)}`}
+            value={formatAmount(stats.avgProfitPerTrade)}
             icon={TrendingUp}
             variant="profit"
             delay={800}
           />
           <StatCard
             title="Perte Moyenne"
-            value={`$${stats.avgLossPerTrade.toFixed(2)}`}
+            value={formatAmount(stats.avgLossPerTrade)}
             icon={TrendingDown}
             variant="loss"
             delay={850}
           />
           <StatCard
             title="Profit Total"
-            value={`$${stats.totalProfit.toLocaleString()}`}
+            value={formatAmount(stats.totalProfit)}
             icon={DollarSign}
             variant="profit"
             delay={900}
           />
           <StatCard
             title="Perte Totale"
-            value={`$${stats.totalLoss.toLocaleString()}`}
+            value={formatAmount(stats.totalLoss)}
             icon={DollarSign}
             variant="loss"
             delay={950}
@@ -328,7 +330,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <StatCard
             title="Bénéfice Net"
-            value={`$${stats.netProfit.toLocaleString()}`}
+            value={formatAmount(stats.netProfit)}
             icon={DollarSign}
             variant={stats.netProfit >= 0 ? 'profit' : 'loss'}
             delay={1050}
@@ -349,7 +351,7 @@ const Dashboard: React.FC = () => {
           />
           <StatCard
             title="Résultat Moyen"
-            value={`$${stats.avgTradeResult.toFixed(2)}`}
+            value={formatAmount(stats.avgTradeResult)}
             icon={BarChart3}
             variant={stats.avgTradeResult >= 0 ? 'profit' : 'loss'}
             delay={1200}
@@ -423,7 +425,7 @@ const Dashboard: React.FC = () => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Capital']}
+                  formatter={(value: number) => [formatAmount(value), 'Capital']}
                 />
                 <Area
                   type="monotone"
@@ -456,7 +458,7 @@ const Dashboard: React.FC = () => {
                     borderRadius: '8px',
                   }}
                   formatter={(value: number, name: string) => [
-                    name === 'pnl' ? `$${value.toLocaleString()}` : value,
+                    name === 'pnl' ? formatAmount(value) : value,
                     name === 'pnl' ? 'P&L' : name === 'wins' ? 'Gagnants' : 'Perdants'
                   ]}
                 />
