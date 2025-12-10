@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTrades, Trade } from '@/hooks/useTrades';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ import { toast } from 'sonner';
 const History: React.FC = () => {
   const { t, language } = useLanguage();
   const { trades, isLoading, deleteTrade } = useTrades();
+  const { formatAmount } = useCurrency();
   const locale = language === 'fr' ? fr : enUS;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,11 +187,11 @@ const History: React.FC = () => {
       <div className="grid grid-cols-3 gap-4">
         <div className="glass-card p-4 text-center animate-fade-in">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('totalGains')}</p>
-          <p className="font-display text-xl font-bold profit-text">${totalGains.toLocaleString()}</p>
+          <p className="font-display text-xl font-bold profit-text">{formatAmount(totalGains)}</p>
         </div>
         <div className="glass-card p-4 text-center animate-fade-in" style={{ animationDelay: '50ms' }}>
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('totalLosses')}</p>
-          <p className="font-display text-xl font-bold loss-text">${totalLosses.toLocaleString()}</p>
+          <p className="font-display text-xl font-bold loss-text">{formatAmount(totalLosses)}</p>
         </div>
         <div className="glass-card p-4 text-center animate-fade-in" style={{ animationDelay: '100ms' }}>
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('breakeven')}</p>
@@ -416,7 +418,7 @@ const History: React.FC = () => {
                         trade.profit_loss && trade.profit_loss < 0 ? "loss-text" : "text-muted-foreground"
                       )}>
                         {trade.profit_loss !== null 
-                          ? `${trade.profit_loss > 0 ? '+' : ''}$${trade.profit_loss.toLocaleString()}`
+                          ? formatAmount(trade.profit_loss, true)
                           : 'En cours'
                         }
                       </p>
