@@ -137,9 +137,7 @@ const Dashboard: React.FC = () => {
   const NoDataMessage = () => (
     <div className="text-center py-4 px-2 bg-muted/30 rounded-lg border border-border/50 mb-4">
       <p className="text-sm text-muted-foreground">
-        {language === 'fr' 
-          ? "📊 Aucune donnée enregistrée pour le moment. Ajoutez vos premiers trades pour voir vos statistiques." 
-          : "📊 No data recorded yet. Add your first trades to see your statistics."}
+        {t('noDataYet')}
       </p>
     </div>
   );
@@ -202,37 +200,37 @@ const Dashboard: React.FC = () => {
 
       {/* Section: Statistiques Principales */}
       <div>
-        <SectionHeader icon={Activity} title="Statistiques Principales" delay={100} />
+        <SectionHeader icon={Activity} title={t('mainStatistics')} delay={100} />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
-            title="Total Transactions"
+            title={t('totalTransactions')}
             value={stats.totalTrades}
             icon={Activity}
             delay={150}
           />
           <StatCard
-            title="Trans. Gagnantes"
+            title={t('winningTransactions')}
             value={stats.winningTrades}
             icon={TrendingUp}
             variant="profit"
             delay={200}
           />
           <StatCard
-            title="Trans. Perdantes"
+            title={t('losingTransactions')}
             value={stats.losingTrades}
             icon={TrendingDown}
             variant="loss"
             delay={250}
           />
           <StatCard
-            title="Taux de Victoire"
+            title={t('victoryRate')}
             value={`${stats.winrate.toFixed(1)}%`}
             icon={Target}
             variant={stats.winrate >= 50 ? 'profit' : 'loss'}
             delay={300}
           />
           <StatCard
-            title="Break-even"
+            title={t('breakeven')}
             value={stats.breakevenTrades}
             icon={ArrowUpDown}
             variant="neutral"
@@ -647,7 +645,10 @@ const Dashboard: React.FC = () => {
       {/* Footer */}
       <div className="text-center py-6 border-t border-border/50">
         <p className="text-sm text-muted-foreground">
-          Créé par un trader pour les traders. <span className="text-primary font-semibold">ALPHA FX</span>
+          {t('slogan')}
+        </p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Smart Trade Tracker <span className="text-primary font-semibold">V1.0.0</span>
         </p>
       </div>
     </div>
