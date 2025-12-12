@@ -6,14 +6,17 @@ import {
   TrendingUp, 
   BarChart3, 
   Brain, 
-  Target, 
   Video, 
   Calculator,
   Trophy,
   Shield,
   Sparkles,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Users,
+  LineChart,
+  Star,
+  Quote
 } from 'lucide-react';
 import ParticleBackground from '@/components/landing/ParticleBackground';
 import TradingChartAnimation from '@/components/landing/TradingChartAnimation';
@@ -153,6 +156,78 @@ const Landing = () => {
           {/* Quote Rotator */}
           <div className="mb-16">
             <QuoteRotator />
+          </div>
+
+          {/* Statistics Section */}
+          <div className="mb-16">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+              {[
+                { value: '10K+', label: language === 'fr' ? 'Traders actifs' : 'Active traders', icon: Users },
+                { value: '500K+', label: language === 'fr' ? 'Trades enregistrés' : 'Trades recorded', icon: LineChart },
+                { value: '98%', label: language === 'fr' ? 'Satisfaction' : 'Satisfaction', icon: Star },
+                { value: '24/7', label: language === 'fr' ? 'Disponibilité' : 'Availability', icon: Shield },
+              ].map((stat, index) => (
+                <div key={index} className="glass-card p-4 sm:p-6 text-center rounded-xl group hover:border-primary/40 transition-all">
+                  <stat.icon className="w-6 h-6 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="text-2xl sm:text-3xl font-bold text-gradient-primary mb-1">{stat.value}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Testimonials Section */}
+          <div className="mb-16">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-10">
+              {language === 'fr' ? 'Ce que disent nos utilisateurs' : 'What our users say'}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  name: 'Alexandre M.',
+                  role: language === 'fr' ? 'Trader Forex' : 'Forex Trader',
+                  text: language === 'fr' 
+                    ? "Depuis que j'utilise Smart Trade Tracker, mon winrate est passé de 45% à 62%. L'analyse psychologique m'a vraiment aidé à comprendre mes erreurs."
+                    : "Since using Smart Trade Tracker, my winrate went from 45% to 62%. The psychological analysis really helped me understand my mistakes.",
+                  rating: 5
+                },
+                {
+                  name: 'Sophie L.',
+                  role: language === 'fr' ? 'Trader Crypto' : 'Crypto Trader',
+                  text: language === 'fr'
+                    ? "Le journal vidéo est génial ! Je peux revoir mes analyses et comprendre pourquoi j'ai pris certaines décisions. Indispensable."
+                    : "The video journal is amazing! I can review my analyses and understand why I made certain decisions. Essential.",
+                  rating: 5
+                },
+                {
+                  name: 'Thomas R.',
+                  role: language === 'fr' ? 'Day Trader' : 'Day Trader',
+                  text: language === 'fr'
+                    ? "Les défis et la gamification me motivent à rester discipliné. J'ai atteint le niveau Expert en 3 mois !"
+                    : "The challenges and gamification keep me motivated to stay disciplined. I reached Expert level in 3 months!",
+                  rating: 5
+                }
+              ].map((testimonial, index) => (
+                <div key={index} className="glass-card-hover p-6 rounded-xl relative">
+                  <Quote className="w-8 h-8 text-primary/20 absolute top-4 right-4" />
+                  <div className="flex items-center gap-1 mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                  <p className="text-foreground/80 text-sm mb-4 leading-relaxed">"{testimonial.text}"</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold">
+                      {testimonial.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-foreground text-sm">{testimonial.name}</div>
+                      <div className="text-xs text-muted-foreground">{testimonial.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Security Badge */}
