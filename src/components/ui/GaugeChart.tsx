@@ -5,21 +5,46 @@ interface GaugeChartProps {
   value: number;
   max?: number;
   label: string;
+  displayValue?: string; // Optional custom display value
   size?: 'sm' | 'md' | 'lg';
   variant?: 'primary' | 'profit' | 'loss';
   className?: string;
 }
 
+// Utility: Clamp value between min and max
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(Math.max(value, min), max);
+};
+
+// Utility: Round to 1 decimal
+const roundToOneDecimal = (value: number): number => {
+  return Math.round(value * 10) / 10;
+};
+
 const GaugeChart: React.FC<GaugeChartProps> = ({
   value,
   max = 100,
   label,
+  displayValue,
   size = 'md',
   variant = 'primary',
   className,
 }) => {
-  const percentage = Math.min((value / max) * 100, 100);
+  // Clamp and round the percentage for visual display
+  const safeValue = Number.isFinite(value) ? value : 0;
+  const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
+  
+  // Calculate percentage clamped between 0-100
+  const rawPercentage = (safeValue / safeMax) * 100;
+  const percentage = clamp(roundToOneDecimal(rawPercentage), 0, 100);
+  
+  // Rotation for needle: -90deg (0%) to +90deg (100%)
   const rotation = (percentage / 100) * 180 - 90;
+  
+  // Display value: use custom or calculated
+  const displayText = displayValue !== undefined 
+    ? displayValue 
+    : roundToOneDecimal(safeValue).toString();
   
   const sizes = {
     sm: { container: 'w-24 h-12', text: 'text-lg' },
@@ -50,7 +75,7 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
             strokeLinecap="round"
           />
           
-          {/* Value arc */}
+          {/* Value arc - percentage clamped to valid range */}
           <path
             d="M 5 50 A 45 45 0 0 1 95 50"
             fill="none"
@@ -94,7 +119,7 @@ const GaugeChart: React.FC<GaugeChartProps> = ({
             sizes[size].text,
             colors[variant].fill
           )}>
-            {value}
+            {displayText}
           </span>
         </div>
       </div>

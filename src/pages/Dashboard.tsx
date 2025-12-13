@@ -125,13 +125,16 @@ const Dashboard: React.FC = () => {
     { name: t('breakeven'), value: stats.breakevenTrades || 0.1, actualValue: stats.breakevenTrades, color: 'hsl(var(--muted-foreground))' },
   ];
 
-  // Radar chart data for performance overview
+  // Radar chart data for performance overview - all values clamped 0-100
+  const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
+  const round1 = (val: number) => Math.round(val * 10) / 10;
+  
   const radarData = [
-    { subject: t('winrate'), A: Math.min(100, stats.winrate), fullMark: 100 },
-    { subject: t('profitFactor'), A: Math.min(100, stats.profitFactor * 25), fullMark: 100 },
-    { subject: t('riskReward'), A: Math.min(100, stats.avgRiskReward * 25), fullMark: 100 },
-    { subject: t('consistency'), A: stats.longestWinStreak > 0 ? Math.min(100, stats.longestWinStreak * 15) : 0, fullMark: 100 },
-    { subject: t('riskManagement'), A: Math.max(0, 100 - stats.maxDrawdownPercent), fullMark: 100 },
+    { subject: t('winrate'), A: round1(clamp(stats.winrate, 0, 100)), fullMark: 100 },
+    { subject: t('profitFactor'), A: round1(clamp(stats.profitFactor * 25, 0, 100)), fullMark: 100 },
+    { subject: t('riskReward'), A: round1(clamp(stats.avgRiskReward * 25, 0, 100)), fullMark: 100 },
+    { subject: t('consistency'), A: stats.longestWinStreak > 0 ? round1(clamp(stats.longestWinStreak * 15, 0, 100)) : 0, fullMark: 100 },
+    { subject: t('riskManagement'), A: round1(clamp(100 - stats.maxDrawdownPercent, 0, 100)), fullMark: 100 },
   ];
 
   // No data message component
@@ -336,14 +339,14 @@ const Dashboard: React.FC = () => {
           />
           <StatCard
             title={t('profitFactorLabel')}
-            value={stats.profitFactor.toFixed(2)}
+            value={stats.profitFactorDisplay}
             icon={Scale}
             variant={stats.profitFactor >= 1.5 ? 'profit' : stats.profitFactor >= 1 ? 'neutral' : 'loss'}
             delay={1100}
           />
           <StatCard
             title={t('avgRiskReward')}
-            value={stats.avgRiskReward.toFixed(2)}
+            value={stats.avgRiskRewardDisplay}
             icon={Scale}
             variant={stats.avgRiskReward >= 1.5 ? 'profit' : stats.avgRiskReward >= 1 ? 'neutral' : 'loss'}
             delay={1150}
@@ -611,32 +614,38 @@ const Dashboard: React.FC = () => {
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 justify-items-center">
           <GaugeChart
-            value={Math.min(100, stats.winrate)}
+            value={stats.winrate}
+            displayValue={`${round1(clamp(stats.winrate, 0, 100))}`}
             label={t('winrate')}
             variant={stats.winrate >= 60 ? 'profit' : stats.winrate >= 40 ? 'primary' : 'loss'}
           />
           <GaugeChart
-            value={Math.min(100, stats.profitFactor * 25)}
+            value={stats.profitFactor * 25}
+            displayValue={stats.profitFactorDisplay}
             label={t('profitFactor')}
             variant={stats.profitFactor >= 1.5 ? 'profit' : stats.profitFactor >= 1 ? 'primary' : 'loss'}
           />
           <GaugeChart
-            value={Math.min(100, stats.avgRiskReward * 25)}
+            value={stats.avgRiskReward * 25}
+            displayValue={stats.avgRiskRewardDisplay}
             label={t('avgRiskReward')}
             variant={stats.avgRiskReward >= 1.5 ? 'profit' : stats.avgRiskReward >= 1 ? 'primary' : 'loss'}
           />
           <GaugeChart
-            value={stats.expectancy >= 0 ? Math.min(100, stats.expectancy * 10) : 0}
+            value={stats.expectancy >= 0 ? stats.expectancy * 10 : 0}
+            displayValue={`${stats.expectancy >= 0 ? round1(stats.expectancy) : 0}`}
             label={t('expectancy')}
             variant={stats.expectancy > 0 ? 'profit' : 'loss'}
           />
           <GaugeChart
-            value={Math.max(0, 100 - stats.maxDrawdownPercent)}
+            value={100 - stats.maxDrawdownPercent}
+            displayValue={`${round1(clamp(100 - stats.maxDrawdownPercent, 0, 100))}`}
             label={t('securityIndicator')}
             variant={stats.maxDrawdownPercent <= 10 ? 'profit' : stats.maxDrawdownPercent <= 20 ? 'primary' : 'loss'}
           />
           <GaugeChart
-            value={stats.longestWinStreak > 0 ? Math.min(100, stats.longestWinStreak * 15) : 0}
+            value={stats.longestWinStreak * 15}
+            displayValue={`${stats.longestWinStreak}`}
             label={t('consistency')}
             variant="primary"
           />

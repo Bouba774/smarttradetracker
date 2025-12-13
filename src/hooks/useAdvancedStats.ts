@@ -32,10 +32,12 @@ export interface AdvancedStats {
   avgLotSize: number;
   
   // Risk metrics
-  profitFactor: number;
+  profitFactor: number | null; // null = infinity (no losses)
+  profitFactorDisplay: string;
   expectancy: number;
   expectancyPercent: number;
-  avgRiskReward: number;
+  avgRiskReward: number | null; // null = N/A
+  avgRiskRewardDisplay: string;
   
   // Streaks
   longestWinStreak: number;
@@ -51,14 +53,27 @@ export interface AdvancedStats {
   totalTimeInPosition: string;
 }
 
+// Utility: Round to specified decimals
+const round = (value: number, decimals: number): number => {
+  const multiplier = Math.pow(10, decimals);
+  return Math.round(value * multiplier) / multiplier;
+};
+
+// Utility: Clamp value between min and max
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(Math.max(value, min), max);
+};
+
+// Utility: Format duration from minutes
 const formatDuration = (minutes: number): string => {
-  if (minutes === 0) return '0m';
+  if (!Number.isFinite(minutes) || minutes <= 0) return '0m';
   
-  const days = Math.floor(minutes / (60 * 24));
-  const hours = Math.floor((minutes % (60 * 24)) / 60);
-  const mins = Math.floor(minutes % 60);
+  const totalMinutes = Math.floor(minutes);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const mins = totalMinutes % 60;
   
-  const parts = [];
+  const parts: string[] = [];
   if (days > 0) parts.push(`${days}j`);
   if (hours > 0) parts.push(`${hours}h`);
   if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
@@ -66,46 +81,50 @@ const formatDuration = (minutes: number): string => {
   return parts.join(' ');
 };
 
+// Calculate streaks from sorted trades
 const calculateStreaks = (trades: Trade[]) => {
-  if (trades.length === 0) {
-    return { longestWin: 0, longestLoss: 0, current: { type: 'none' as const, count: 0 } };
-  }
+  const defaultResult = { 
+    longestWin: 0, 
+    longestLoss: 0, 
+    current: { type: 'none' as const, count: 0 } 
+  };
+  
+  if (trades.length === 0) return defaultResult;
 
-  // Sort by date ascending
-  const sortedTrades = [...trades]
+  // Filter only win/loss trades (breakeven breaks streaks)
+  const relevantTrades = trades
     .filter(t => t.result === 'win' || t.result === 'loss')
     .sort((a, b) => new Date(a.trade_date).getTime() - new Date(b.trade_date).getTime());
 
+  if (relevantTrades.length === 0) return defaultResult;
+
   let longestWin = 0;
   let longestLoss = 0;
-  let currentWin = 0;
-  let currentLoss = 0;
+  let currentWinStreak = 0;
+  let currentLossStreak = 0;
 
-  sortedTrades.forEach(trade => {
+  relevantTrades.forEach(trade => {
     if (trade.result === 'win') {
-      currentWin++;
-      currentLoss = 0;
-      longestWin = Math.max(longestWin, currentWin);
+      currentWinStreak++;
+      currentLossStreak = 0;
+      longestWin = Math.max(longestWin, currentWinStreak);
     } else if (trade.result === 'loss') {
-      currentLoss++;
-      currentWin = 0;
-      longestLoss = Math.max(longestLoss, currentLoss);
+      currentLossStreak++;
+      currentWinStreak = 0;
+      longestLoss = Math.max(longestLoss, currentLossStreak);
     }
   });
 
-  // Current streak (from most recent)
-  const lastTrade = sortedTrades[sortedTrades.length - 1];
+  // Current streak from most recent trades
+  const lastTrade = relevantTrades[relevantTrades.length - 1];
   let currentCount = 0;
-  let currentType: 'win' | 'loss' | 'none' = 'none';
+  const currentType = lastTrade.result as 'win' | 'loss';
 
-  if (lastTrade) {
-    currentType = lastTrade.result as 'win' | 'loss';
-    for (let i = sortedTrades.length - 1; i >= 0; i--) {
-      if (sortedTrades[i].result === currentType) {
-        currentCount++;
-      } else {
-        break;
-      }
+  for (let i = relevantTrades.length - 1; i >= 0; i--) {
+    if (relevantTrades[i].result === currentType) {
+      currentCount++;
+    } else {
+      break;
     }
   }
 
@@ -116,6 +135,7 @@ const calculateStreaks = (trades: Trade[]) => {
   };
 };
 
+// Calculate max drawdown
 const calculateMaxDrawdown = (trades: Trade[], startingCapital: number = 10000) => {
   if (trades.length === 0) return { amount: 0, percent: 0 };
 
@@ -124,112 +144,234 @@ const calculateMaxDrawdown = (trades: Trade[], startingCapital: number = 10000) 
 
   let peak = startingCapital;
   let balance = startingCapital;
-  let maxDrawdown = 0;
+  let maxDrawdownAmount = 0;
 
   sortedTrades.forEach(trade => {
-    balance += trade.profit_loss || 0;
+    const pnl = trade.profit_loss ?? 0;
+    balance += pnl;
+    
     if (balance > peak) {
       peak = balance;
     }
+    
     const drawdown = peak - balance;
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
+    if (drawdown > maxDrawdownAmount) {
+      maxDrawdownAmount = drawdown;
     }
   });
 
-  const maxDrawdownPercent = peak > 0 ? (maxDrawdown / peak) * 100 : 0;
+  const maxDrawdownPercent = peak > 0 ? (maxDrawdownAmount / peak) * 100 : 0;
 
-  return { amount: maxDrawdown, percent: maxDrawdownPercent };
+  return { 
+    amount: round(maxDrawdownAmount, 2), 
+    percent: round(maxDrawdownPercent, 1) 
+  };
 };
 
 export const useAdvancedStats = (trades: Trade[]): AdvancedStats => {
   return useMemo(() => {
-    // Filter closed trades (not pending)
-    const closedTrades = trades.filter(t => t.result !== 'pending');
-    
-    // Basic counts
-    const totalTrades = trades.length;
-    const winningTrades = trades.filter(t => t.result === 'win').length;
-    const losingTrades = trades.filter(t => t.result === 'loss').length;
-    const breakevenTrades = trades.filter(t => t.result === 'breakeven').length;
-    const pendingTrades = trades.filter(t => t.result === 'pending').length;
-    
-    // Positions
-    const buyPositions = trades.filter(t => t.direction === 'long').length;
-    const sellPositions = trades.filter(t => t.direction === 'short').length;
-    
-    // Win rate (excluding pending)
-    const winrate = closedTrades.length > 0 
-      ? (winningTrades / closedTrades.length) * 100 
-      : 0;
-    
-    // Profit/Loss calculations
-    const winningTradesData = trades.filter(t => t.profit_loss && t.profit_loss > 0);
-    const losingTradesData = trades.filter(t => t.profit_loss && t.profit_loss < 0);
-    
-    const totalProfit = winningTradesData.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
-    const totalLoss = Math.abs(losingTradesData.reduce((sum, t) => sum + (t.profit_loss || 0), 0));
-    const netProfit = totalProfit - totalLoss;
-    
-    // Best/Worst
-    const allProfitLoss = trades.map(t => t.profit_loss || 0);
-    const bestProfit = allProfitLoss.length > 0 ? Math.max(...allProfitLoss) : 0;
-    const worstLoss = allProfitLoss.length > 0 ? Math.min(...allProfitLoss) : 0;
-    
-    // Averages
-    const avgProfitPerTrade = winningTradesData.length > 0 
-      ? totalProfit / winningTradesData.length 
-      : 0;
-    const avgLossPerTrade = losingTradesData.length > 0 
-      ? totalLoss / losingTradesData.length 
-      : 0;
-    const avgTradeResult = closedTrades.length > 0 
-      ? netProfit / closedTrades.length 
-      : 0;
-    
-    // Average lot size
-    const avgLotSize = trades.length > 0 
-      ? trades.reduce((sum, t) => sum + t.lot_size, 0) / trades.length 
-      : 0;
-    
-    // Profit Factor
-    const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : totalProfit > 0 ? totalProfit : 0;
-    
-    // Expectancy
-    const winRateDecimal = closedTrades.length > 0 ? winningTrades / closedTrades.length : 0;
-    const lossRateDecimal = 1 - winRateDecimal;
-    const expectancy = (winRateDecimal * avgProfitPerTrade) - (lossRateDecimal * avgLossPerTrade);
-    
-    // Expectancy as percentage of average trade
-    const avgTradeSize = trades.length > 0 
-      ? trades.reduce((sum, t) => sum + (t.entry_price * t.lot_size), 0) / trades.length 
-      : 0;
-    const expectancyPercent = avgTradeSize > 0 ? (expectancy / avgTradeSize) * 100 : 0;
-    
-    // Risk/Reward ratio
-    const avgRiskReward = avgLossPerTrade > 0 ? avgProfitPerTrade / avgLossPerTrade : 0;
-    
-    // Streaks
-    const streaks = calculateStreaks(trades);
-    
-    // Drawdown
-    const drawdown = calculateMaxDrawdown(trades);
-    
-    // Time calculations using actual duration_seconds from closed trades
-    const closedTradesWithDuration = trades.filter(t => 
-      t.result !== 'pending' && t.duration_seconds && t.duration_seconds > 0
+    // ==========================================
+    // STEP 1: Filter valid trades
+    // ==========================================
+    // Exclude trades with null/undefined PnL for closed trades
+    // Closed trades = result is 'win', 'loss', or 'breakeven'
+    const closedTrades = trades.filter(t => 
+      t.result === 'win' || t.result === 'loss' || t.result === 'breakeven'
     );
     
-    const totalDurationSeconds = closedTradesWithDuration.reduce(
-      (sum, t) => sum + (t.duration_seconds || 0), 0
+    // Valid closed trades must have a defined profit_loss
+    const validClosedTrades = closedTrades.filter(t => 
+      t.profit_loss !== null && t.profit_loss !== undefined && Number.isFinite(t.profit_loss)
+    );
+    
+    const pendingTrades = trades.filter(t => t.result === 'pending' || !t.result).length;
+    
+    // ==========================================
+    // STEP 2: Basic counts
+    // ==========================================
+    const totalTrades = validClosedTrades.length;
+    
+    // Win = PnL > 0
+    const winningTradesData = validClosedTrades.filter(t => (t.profit_loss ?? 0) > 0);
+    const winningTrades = winningTradesData.length;
+    
+    // Loss = PnL < 0
+    const losingTradesData = validClosedTrades.filter(t => (t.profit_loss ?? 0) < 0);
+    const losingTrades = losingTradesData.length;
+    
+    // Breakeven = PnL === 0
+    const breakevenTrades = validClosedTrades.filter(t => (t.profit_loss ?? 0) === 0).length;
+    
+    // ==========================================
+    // STEP 3: Positions (from ALL trades including pending)
+    // ==========================================
+    const buyPositions = trades.filter(t => 
+      t.direction === 'long' || (t.direction as string) === 'buy'
+    ).length;
+    
+    const sellPositions = trades.filter(t => 
+      t.direction === 'short' || (t.direction as string) === 'sell'
+    ).length;
+    
+    // ==========================================
+    // STEP 4: Win Rate - Clamped to 0-100%
+    // ==========================================
+    let winrate = 0;
+    if (totalTrades > 0) {
+      winrate = (winningTrades / totalTrades) * 100;
+      winrate = clamp(round(winrate, 1), 0, 100);
+    }
+    
+    // ==========================================
+    // STEP 5: Profit/Loss Calculations
+    // ==========================================
+    // Total Profit = Sum of all positive PnL
+    const totalProfit = round(
+      winningTradesData.reduce((sum, t) => sum + (t.profit_loss ?? 0), 0),
+      2
+    );
+    
+    // Total Loss = Absolute sum of all negative PnL
+    const totalLoss = round(
+      Math.abs(losingTradesData.reduce((sum, t) => sum + (t.profit_loss ?? 0), 0)),
+      2
+    );
+    
+    // Net Profit
+    const netProfit = round(totalProfit - totalLoss, 2);
+    
+    // ==========================================
+    // STEP 6: Best/Worst
+    // ==========================================
+    let bestProfit = 0;
+    let worstLoss = 0;
+    
+    if (winningTradesData.length > 0) {
+      bestProfit = round(
+        Math.max(...winningTradesData.map(t => t.profit_loss ?? 0)),
+        2
+      );
+    }
+    
+    if (losingTradesData.length > 0) {
+      worstLoss = round(
+        Math.min(...losingTradesData.map(t => t.profit_loss ?? 0)),
+        2
+      );
+    }
+    
+    // ==========================================
+    // STEP 7: Averages
+    // ==========================================
+    // Average Profit per winning trade
+    const avgProfitPerTrade = winningTrades > 0 
+      ? round(totalProfit / winningTrades, 2) 
+      : 0;
+    
+    // Average Loss per losing trade (absolute value)
+    const avgLossPerTrade = losingTrades > 0 
+      ? round(totalLoss / losingTrades, 2) 
+      : 0;
+    
+    // Average result per trade
+    const avgTradeResult = totalTrades > 0 
+      ? round(netProfit / totalTrades, 2) 
+      : 0;
+    
+    // Average lot size (from all trades with valid lot_size)
+    const tradesWithLots = trades.filter(t => 
+      t.lot_size !== null && t.lot_size !== undefined && Number.isFinite(t.lot_size)
+    );
+    const avgLotSize = tradesWithLots.length > 0
+      ? round(tradesWithLots.reduce((sum, t) => sum + t.lot_size, 0) / tradesWithLots.length, 2)
+      : 0;
+    
+    // ==========================================
+    // STEP 8: Performance Indicators
+    // ==========================================
+    // Profit Factor = TotalProfit / TotalLoss
+    let profitFactor: number | null = null;
+    let profitFactorDisplay = 'N/A';
+    
+    if (totalLoss > 0) {
+      profitFactor = round(totalProfit / totalLoss, 2);
+      profitFactorDisplay = profitFactor.toFixed(2);
+    } else if (totalProfit > 0) {
+      // No losses but has profits = infinity
+      profitFactor = null;
+      profitFactorDisplay = '∞';
+    } else {
+      // No trades or no profit/loss
+      profitFactor = 0;
+      profitFactorDisplay = '0.00';
+    }
+    
+    // Risk/Reward Ratio = AvgProfit / AvgLoss
+    let avgRiskReward: number | null = null;
+    let avgRiskRewardDisplay = 'N/A';
+    
+    if (avgLossPerTrade > 0) {
+      avgRiskReward = round(avgProfitPerTrade / avgLossPerTrade, 2);
+      avgRiskRewardDisplay = avgRiskReward.toFixed(2);
+    } else if (avgProfitPerTrade > 0) {
+      avgRiskReward = null;
+      avgRiskRewardDisplay = '∞';
+    } else {
+      avgRiskReward = 0;
+      avgRiskRewardDisplay = '0.00';
+    }
+    
+    // Expectancy = (WinRate * AvgProfit) - (LossRate * AvgLoss)
+    const winRateDecimal = totalTrades > 0 ? winningTrades / totalTrades : 0;
+    const lossRateDecimal = 1 - winRateDecimal;
+    const expectancy = round(
+      (winRateDecimal * avgProfitPerTrade) - (lossRateDecimal * avgLossPerTrade),
+      2
+    );
+    
+    // Expectancy as percentage
+    const avgTradeSize = tradesWithLots.length > 0
+      ? tradesWithLots.reduce((sum, t) => sum + (t.entry_price * t.lot_size), 0) / tradesWithLots.length
+      : 0;
+    const expectancyPercent = avgTradeSize > 0 
+      ? round((expectancy / avgTradeSize) * 100, 2) 
+      : 0;
+    
+    // ==========================================
+    // STEP 9: Streaks
+    // ==========================================
+    const streaks = calculateStreaks(validClosedTrades);
+    
+    // ==========================================
+    // STEP 10: Drawdown
+    // ==========================================
+    const drawdown = calculateMaxDrawdown(validClosedTrades);
+    
+    // ==========================================
+    // STEP 11: Time Calculations
+    // ==========================================
+    const tradesWithDuration = validClosedTrades.filter(t => 
+      t.duration_seconds !== null && 
+      t.duration_seconds !== undefined && 
+      Number.isFinite(t.duration_seconds) && 
+      t.duration_seconds > 0
+    );
+    
+    const totalDurationSeconds = tradesWithDuration.reduce(
+      (sum, t) => sum + (t.duration_seconds ?? 0), 
+      0
     );
     const totalDurationMinutes = totalDurationSeconds / 60;
     
-    const avgTradeDuration = closedTradesWithDuration.length > 0 
-      ? formatDuration(totalDurationMinutes / closedTradesWithDuration.length) 
+    const avgTradeDuration = tradesWithDuration.length > 0 
+      ? formatDuration(totalDurationMinutes / tradesWithDuration.length) 
       : '0m';
+    
     const totalTimeInPosition = formatDuration(totalDurationMinutes);
 
+    // ==========================================
+    // RETURN FINAL STATS
+    // ==========================================
     return {
       totalTrades,
       winningTrades,
@@ -248,15 +390,17 @@ export const useAdvancedStats = (trades: Trade[]): AdvancedStats => {
       avgLossPerTrade,
       avgTradeResult,
       avgLotSize,
-      profitFactor,
+      profitFactor: profitFactor ?? 0,
+      profitFactorDisplay,
       expectancy,
       expectancyPercent,
-      avgRiskReward,
+      avgRiskReward: avgRiskReward ?? 0,
+      avgRiskRewardDisplay,
       longestWinStreak: streaks.longestWin,
       longestLossStreak: streaks.longestLoss,
       currentStreak: streaks.current,
       maxDrawdown: drawdown.amount,
-      maxDrawdownPercent: drawdown.percent,
+      maxDrawdownPercent: clamp(drawdown.percent, 0, 100),
       avgTradeDuration,
       totalTimeInPosition,
     };
