@@ -339,7 +339,9 @@ const Landing = () => {
             <ScrollReveal animation="fade-up" delay={0}>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
                 <div className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
-                <span className="text-xs text-primary font-medium">v{APP_VERSION}</span>
+                <span className="text-xs text-primary font-medium">
+                  {language === 'fr' ? 'Nouvelle version disponible' : 'New version available'}
+                </span>
               </div>
             </ScrollReveal>
             
