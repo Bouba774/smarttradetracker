@@ -35,6 +35,8 @@ import {
 import ScrollReveal from '@/components/landing/ScrollReveal';
 import ParticleBackground from '@/components/landing/ParticleBackground';
 import ScreenshotCarousel from '@/components/landing/ScreenshotCarousel';
+import FeatureShowcase from '@/components/landing/FeatureShowcase';
+import AnimatedStats from '@/components/landing/AnimatedStats';
 import { APP_NAME, APP_VERSION } from '@/lib/version';
 import {
   Accordion,
@@ -479,79 +481,142 @@ const Landing = () => {
           </div>
         </section>
 
-        {/* Features Section */}
-        <section id="features" className="py-24 sm:py-32">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Features Section - Enhanced with Interactive Showcase */}
+        <section id="features" className="py-24 sm:py-32 relative overflow-hidden">
+          {/* Animated background elements */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+            <div className="absolute bottom-20 right-10 w-96 h-96 bg-profit/5 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <ScrollReveal animation="fade-up">
               <div className="text-center mb-16">
-                <span className="text-sm text-primary font-medium mb-4 block">
-                  {language === 'fr' ? 'Fonctionnalités' : 'Features'}
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-                  {language === 'fr' ? 'Tout ce qu\'il vous faut' : 'Everything you need'}
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
+                  <Zap className="w-4 h-4 text-primary" />
+                  <span className="text-sm text-primary font-medium">
+                    {language === 'fr' ? '8 Fonctionnalités Puissantes' : '8 Powerful Features'}
+                  </span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+                  {language === 'fr' ? 'Tout ce qu\'il vous faut pour' : 'Everything you need to'}
+                  <span className="text-gradient-primary"> {language === 'fr' ? 'réussir' : 'succeed'}</span>
                 </h2>
+                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                  {language === 'fr' 
+                    ? 'Des outils professionnels conçus pour améliorer votre discipline, analyser vos performances et transformer votre trading.'
+                    : 'Professional tools designed to improve your discipline, analyze your performance and transform your trading.'}
+                </p>
               </div>
             </ScrollReveal>
 
-            {/* Features Image Showcase - Responsive */}
+            {/* Interactive Feature Showcase */}
             <ScrollReveal animation="fade-up" delay={100}>
-              <div className="relative max-w-6xl mx-auto mb-16">
-                <div className="absolute -inset-4 bg-gradient-to-r from-profit/10 via-primary/10 to-profit/10 rounded-3xl blur-xl" />
-                
-                {/* Mobile: Interactive Carousel */}
+              <FeatureShowcase language={language} />
+            </ScrollReveal>
+
+            {/* Screenshot Gallery */}
+            <ScrollReveal animation="fade-up" delay={200}>
+              <div className="mt-20">
+                <div className="text-center mb-10">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
+                    {language === 'fr' ? 'Découvrez l\'interface' : 'Discover the interface'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'fr' ? 'Une expérience utilisateur intuitive et professionnelle' : 'An intuitive and professional user experience'}
+                  </p>
+                </div>
+
+                {/* Mobile Carousel */}
                 <div className="block md:hidden">
                   <ScreenshotCarousel 
                     screenshots={[
+                      { src: screenshotDashboard1, altFr: 'Tableau de bord', altEn: 'Dashboard', titleFr: 'Tableau de bord complet', titleEn: 'Complete dashboard' },
                       { src: screenshotDashboard2, altFr: 'Graphiques', altEn: 'Charts', titleFr: 'Graphiques de performance', titleEn: 'Performance charts' },
                       { src: screenshotAddTrade, altFr: 'Ajout trade', altEn: 'Add trade', titleFr: 'Formulaire d\'ajout de trade', titleEn: 'Trade entry form' },
-                      { src: screenshotPsychology, altFr: 'Psychologie', altEn: 'Psychology', titleFr: 'Analyse des émotions', titleEn: 'Emotion analysis' },
-                      { src: screenshotChallenges, altFr: 'Défis', altEn: 'Challenges', titleFr: 'Système de défis', titleEn: 'Challenge system' },
+                      { src: screenshotHistory, altFr: 'Historique', altEn: 'History', titleFr: 'Historique complet', titleEn: 'Complete history' },
+                      { src: screenshotReports, altFr: 'Rapports', altEn: 'Reports', titleFr: 'Rapports détaillés', titleEn: 'Detailed reports' },
+                      { src: screenshotPsychology, altFr: 'Psychologie', altEn: 'Psychology', titleFr: 'Analyse psychologique', titleEn: 'Psychological analysis' },
                       { src: screenshotJournal, altFr: 'Journal', altEn: 'Journal', titleFr: 'Journal de trading', titleEn: 'Trading journal' },
+                      { src: screenshotChallenges, altFr: 'Défis', altEn: 'Challenges', titleFr: 'Système de défis', titleEn: 'Challenge system' },
                       { src: screenshotProfile, altFr: 'Profil', altEn: 'Profile', titleFr: 'Profil utilisateur', titleEn: 'User profile' },
                     ]}
                     language={language}
                   />
                 </div>
 
-                {/* Desktop: Grid */}
-                <div className="hidden md:grid grid-cols-4 gap-4">
+                {/* Desktop Grid with hover effects */}
+                <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-4">
                   {[
-                    { src: screenshotDashboard2, titleFr: 'Graphiques', titleEn: 'Charts' },
+                    { src: screenshotDashboard1, titleFr: 'Tableau de bord', titleEn: 'Dashboard' },
+                    { src: screenshotReports, titleFr: 'Rapports', titleEn: 'Reports' },
                     { src: screenshotAddTrade, titleFr: 'Ajout de trade', titleEn: 'Add trade' },
+                    { src: screenshotHistory, titleFr: 'Historique', titleEn: 'History' },
                     { src: screenshotPsychology, titleFr: 'Psychologie', titleEn: 'Psychology' },
+                    { src: screenshotJournal, titleFr: 'Journal', titleEn: 'Journal' },
                     { src: screenshotChallenges, titleFr: 'Défis', titleEn: 'Challenges' },
+                    { src: screenshotProfile, titleFr: 'Profil', titleEn: 'Profile' },
                   ].map((item, index) => (
-                    <div key={index} className="relative rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300 group">
-                      <img 
-                        src={item.src} 
-                        alt={language === 'fr' ? item.titleFr : item.titleEn}
-                        className="w-full h-48 lg:h-56 object-cover object-top"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
-                        <p className="text-xs font-medium text-foreground">{language === 'fr' ? item.titleFr : item.titleEn}</p>
+                    <div 
+                      key={index} 
+                      className="relative rounded-2xl overflow-hidden border border-border/50 shadow-xl group cursor-pointer"
+                      style={{
+                        animationDelay: `${index * 0.05}s`,
+                      }}
+                    >
+                      {/* Glow effect */}
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/50 to-profit/50 rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-300" />
+                      
+                      <div className="relative bg-card rounded-2xl overflow-hidden">
+                        <img 
+                          src={item.src} 
+                          alt={language === 'fr' ? item.titleFr : item.titleEn}
+                          className="w-full h-40 lg:h-48 object-cover object-top transform group-hover:scale-110 transition-transform duration-500"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                          <p className="text-sm font-medium text-foreground">{language === 'fr' ? item.titleFr : item.titleEn}</p>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             </ScrollReveal>
-            
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {features.map((feature, index) => (
-                <ScrollReveal key={index} animation="fade-up" delay={index * 50}>
-                  <div className="group p-6 rounded-2xl border border-border/50 bg-card/30 hover:bg-card/60 hover:border-primary/30 transition-all duration-300">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                      <feature.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <h3 className="text-base font-semibold text-foreground mb-2">{feature.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
-                  </div>
-                </ScrollReveal>
-              ))}
-            </div>
+          </div>
+        </section>
+
+        {/* Live Stats Demo Section */}
+        <section className="py-20 sm:py-28 bg-gradient-to-b from-card/30 to-background relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+          </div>
+
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <ScrollReveal animation="fade-up">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-profit/10 border border-profit/20 mb-6">
+                  <Activity className="w-4 h-4 text-profit animate-pulse" />
+                  <span className="text-sm text-profit font-medium">
+                    {language === 'fr' ? 'Statistiques en direct' : 'Live Statistics'}
+                  </span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+                  {language === 'fr' ? 'Suivez vos performances' : 'Track your performance'}
+                </h2>
+                <p className="text-muted-foreground max-w-xl mx-auto">
+                  {language === 'fr' 
+                    ? 'Des statistiques professionnelles pour prendre de meilleures décisions.'
+                    : 'Professional statistics to make better decisions.'}
+                </p>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal animation="fade-up" delay={100}>
+              <AnimatedStats language={language} />
+            </ScrollReveal>
           </div>
         </section>
 
