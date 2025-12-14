@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import ScrollReveal from '@/components/landing/ScrollReveal';
 import ParticleBackground from '@/components/landing/ParticleBackground';
+import ScreenshotCarousel from '@/components/landing/ScreenshotCarousel';
 import { APP_NAME, APP_VERSION } from '@/lib/version';
 import {
   Accordion,
@@ -417,15 +418,18 @@ const Landing = () => {
               <div className="relative max-w-6xl mx-auto">
                 <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-profit/20 to-primary/20 rounded-3xl blur-2xl opacity-50" />
                 
-                {/* Mobile: Single image */}
-                <div className="block md:hidden relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl">
-                  <img 
-                    src={screenshotDashboard1} 
-                    alt={language === 'fr' ? 'Tableau de bord Smart Trade Tracker' : 'Smart Trade Tracker Dashboard'}
-                    className="w-full h-auto object-cover"
-                    loading="lazy"
+                {/* Mobile: Interactive Carousel */}
+                <div className="block md:hidden">
+                  <ScreenshotCarousel 
+                    screenshots={[
+                      { src: screenshotDashboard1, altFr: 'Tableau de bord', altEn: 'Dashboard', titleFr: 'Tableau de bord avec statistiques', titleEn: 'Dashboard with statistics' },
+                      { src: screenshotReports, altFr: 'Rapports', altEn: 'Reports', titleFr: 'Rapports de performance', titleEn: 'Performance reports' },
+                      { src: screenshotHistory, altFr: 'Historique', altEn: 'History', titleFr: 'Historique complet des trades', titleEn: 'Complete trade history' },
+                      { src: screenshotPsychology, altFr: 'Psychologie', altEn: 'Psychology', titleFr: 'Analyse psychologique', titleEn: 'Psychological analysis' },
+                      { src: screenshotChallenges, altFr: 'Défis', altEn: 'Challenges', titleFr: 'Défis et gamification', titleEn: 'Challenges and gamification' },
+                    ]}
+                    language={language}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
                 </div>
 
                 {/* Desktop: Multiple images showcase */}
@@ -436,8 +440,12 @@ const Landing = () => {
                       alt={language === 'fr' ? 'Statistiques principales' : 'Main statistics'}
                       className="w-full h-auto object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-xs font-medium text-foreground/90">{language === 'fr' ? 'Tableau de bord' : 'Dashboard'}</p>
+                    </div>
                   </div>
                   <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl transform hover:scale-[1.02] transition-transform duration-300 translate-y-4">
                     <img 
@@ -445,8 +453,12 @@ const Landing = () => {
                       alt={language === 'fr' ? 'Rapports de trading' : 'Trading reports'}
                       className="w-full h-auto object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-xs font-medium text-foreground/90">{language === 'fr' ? 'Rapports détaillés' : 'Detailed reports'}</p>
+                    </div>
                   </div>
                   <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl transform hover:scale-[1.02] transition-transform duration-300">
                     <img 
@@ -454,8 +466,12 @@ const Landing = () => {
                       alt={language === 'fr' ? 'Historique des trades' : 'Trade history'}
                       className="w-full h-auto object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3">
+                      <p className="text-xs font-medium text-foreground/90">{language === 'fr' ? 'Historique complet' : 'Complete history'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -477,45 +493,48 @@ const Landing = () => {
               </div>
             </ScrollReveal>
 
-            {/* Features Image Showcase - Responsive grid */}
+            {/* Features Image Showcase - Responsive */}
             <ScrollReveal animation="fade-up" delay={100}>
               <div className="relative max-w-6xl mx-auto mb-16">
                 <div className="absolute -inset-4 bg-gradient-to-r from-profit/10 via-primary/10 to-profit/10 rounded-3xl blur-xl" />
                 
-                {/* Mobile: 2 columns */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                  <div className="relative rounded-xl md:rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300">
-                    <img 
-                      src={screenshotDashboard2} 
-                      alt={language === 'fr' ? 'Graphiques de performance' : 'Performance charts'}
-                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover object-top"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="relative rounded-xl md:rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300">
-                    <img 
-                      src={screenshotAddTrade} 
-                      alt={language === 'fr' ? 'Ajout de trade' : 'Add trade'}
-                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover object-top"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="relative rounded-xl md:rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300">
-                    <img 
-                      src={screenshotPsychology} 
-                      alt={language === 'fr' ? 'Analyse psychologique' : 'Psychological analysis'}
-                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover object-top"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="relative rounded-xl md:rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300">
-                    <img 
-                      src={screenshotChallenges} 
-                      alt={language === 'fr' ? 'Défis et gamification' : 'Challenges and gamification'}
-                      className="w-full h-32 sm:h-40 md:h-48 lg:h-56 object-cover object-top"
-                      loading="lazy"
-                    />
-                  </div>
+                {/* Mobile: Interactive Carousel */}
+                <div className="block md:hidden">
+                  <ScreenshotCarousel 
+                    screenshots={[
+                      { src: screenshotDashboard2, altFr: 'Graphiques', altEn: 'Charts', titleFr: 'Graphiques de performance', titleEn: 'Performance charts' },
+                      { src: screenshotAddTrade, altFr: 'Ajout trade', altEn: 'Add trade', titleFr: 'Formulaire d\'ajout de trade', titleEn: 'Trade entry form' },
+                      { src: screenshotPsychology, altFr: 'Psychologie', altEn: 'Psychology', titleFr: 'Analyse des émotions', titleEn: 'Emotion analysis' },
+                      { src: screenshotChallenges, altFr: 'Défis', altEn: 'Challenges', titleFr: 'Système de défis', titleEn: 'Challenge system' },
+                      { src: screenshotJournal, altFr: 'Journal', altEn: 'Journal', titleFr: 'Journal de trading', titleEn: 'Trading journal' },
+                      { src: screenshotProfile, altFr: 'Profil', altEn: 'Profile', titleFr: 'Profil utilisateur', titleEn: 'User profile' },
+                    ]}
+                    language={language}
+                  />
+                </div>
+
+                {/* Desktop: Grid */}
+                <div className="hidden md:grid grid-cols-4 gap-4">
+                  {[
+                    { src: screenshotDashboard2, titleFr: 'Graphiques', titleEn: 'Charts' },
+                    { src: screenshotAddTrade, titleFr: 'Ajout de trade', titleEn: 'Add trade' },
+                    { src: screenshotPsychology, titleFr: 'Psychologie', titleEn: 'Psychology' },
+                    { src: screenshotChallenges, titleFr: 'Défis', titleEn: 'Challenges' },
+                  ].map((item, index) => (
+                    <div key={index} className="relative rounded-2xl overflow-hidden border border-border/50 shadow-xl transform hover:scale-[1.03] transition-transform duration-300 group">
+                      <img 
+                        src={item.src} 
+                        alt={language === 'fr' ? item.titleFr : item.titleEn}
+                        className="w-full h-48 lg:h-56 object-cover object-top"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
+                        <p className="text-xs font-medium text-foreground">{language === 'fr' ? item.titleFr : item.titleEn}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </ScrollReveal>
