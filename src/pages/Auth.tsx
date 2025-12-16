@@ -15,7 +15,8 @@ import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
 // Cloudflare Turnstile Site Key from environment variables
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+const HAS_TURNSTILE = !!TURNSTILE_SITE_KEY && TURNSTILE_SITE_KEY.trim() !== '';
 
 const Auth: React.FC = () => {
   const { signIn, signUp, user, loading } = useAuth();
@@ -391,9 +392,9 @@ const Auth: React.FC = () => {
             )}
 
             {/* Cloudflare Turnstile */}
-            {TURNSTILE_SITE_KEY && (
+            {HAS_TURNSTILE && (
               <TurnstileWidget
-                siteKey={TURNSTILE_SITE_KEY}
+                siteKey={TURNSTILE_SITE_KEY!}
                 onVerify={(token) => setCaptchaToken(token)}
                 onExpire={() => setCaptchaToken(null)}
                 onError={() => setCaptchaToken(null)}
@@ -404,7 +405,7 @@ const Auth: React.FC = () => {
 
             <Button
               type="submit"
-              disabled={isSubmitting || (!!TURNSTILE_SITE_KEY && !captchaToken)}
+              disabled={isSubmitting || (HAS_TURNSTILE && !captchaToken)}
               className="w-full bg-gradient-primary hover:opacity-90 font-display h-12"
             >
               {isSubmitting ? (
