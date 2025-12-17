@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useFeedback } from '@/hooks/useFeedback';
 import { ProfilePhotoUploader } from '@/components/ProfilePhotoUploader';
+import { format } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
 import {
   User,
   Mail,
@@ -27,6 +29,7 @@ import {
   Edit3,
   Check,
   X,
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -353,6 +356,15 @@ const Profile: React.FC = () => {
               <Mail className="w-4 h-4" />
               <span className="text-sm">{user?.email}</span>
             </div>
+            {user?.created_at && (
+              <div className="flex items-center justify-center gap-2 text-muted-foreground mt-2">
+                <Calendar className="w-4 h-4" />
+                <span className="text-sm">
+                  {language === 'fr' ? 'Membre depuis le ' : 'Member since '}
+                  {format(new Date(user.created_at), 'd MMM yyyy', { locale: language === 'fr' ? fr : enUS })}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Level & Title */}
