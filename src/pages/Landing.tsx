@@ -101,14 +101,23 @@ const Landing = () => {
     return () => clearTimeout(timeout);
   }, [typedText, isDeleting, wordIndex, words]);
 
-  // Parallax effect
+  // Parallax effect - optimized with requestAnimationFrame to avoid forced reflow
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setScrollY(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Counter animation with intersection observer
+  // Counter animation with intersection observer - optimized with requestAnimationFrame
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -116,21 +125,23 @@ const Landing = () => {
           if (entry.isIntersecting && !countersStarted) {
             setCountersStarted(true);
             const duration = 2000;
-            const steps = 60;
-            const interval = duration / steps;
+            const startTime = performance.now();
             
-            let step = 0;
-            const timer = setInterval(() => {
-              step++;
-              const progress = step / steps;
+            const animate = (currentTime: number) => {
+              const elapsed = currentTime - startTime;
+              const progress = Math.min(elapsed / duration, 1);
               const easeOut = 1 - Math.pow(1 - progress, 3);
               
               setActiveTraders(Math.floor(2500 * easeOut));
               setAverageRating(parseFloat((4.8 * easeOut).toFixed(1)));
               setTradesRecorded(Math.floor(150 * easeOut));
               
-              if (step >= steps) clearInterval(timer);
-            }, interval);
+              if (progress < 1) {
+                requestAnimationFrame(animate);
+              }
+            };
+            
+            requestAnimationFrame(animate);
           }
         });
       },
