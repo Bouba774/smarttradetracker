@@ -246,6 +246,15 @@ const Auth: React.FC = () => {
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-profit/10 rounded-full blur-3xl" />
 
       <div className="w-full max-w-md relative z-10">
+        {/* Back to landing button */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {language === 'fr' ? 'Retour à l\'accueil' : 'Back to home'}
+        </Link>
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
