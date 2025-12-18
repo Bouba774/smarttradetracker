@@ -10,6 +10,7 @@ import { APP_VERSION } from '@/lib/version';
 import StatCard from '@/components/ui/StatCard';
 import GaugeChart from '@/components/ui/GaugeChart';
 import TradeFocusMode from '@/components/TradeFocusMode';
+import ConfidentialValue from '@/components/ConfidentialValue';
 import {
   TrendingUp,
   TrendingDown,
@@ -302,42 +303,42 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             title={t('bestProfit')}
-            value={formatAmount(stats.bestProfit)}
+            value={<ConfidentialValue>{formatAmount(stats.bestProfit)}</ConfidentialValue>}
             icon={Trophy}
             variant="profit"
             delay={700}
           />
           <StatCard
             title={t('worstLoss')}
-            value={formatAmount(stats.worstLoss)}
+            value={<ConfidentialValue>{formatAmount(stats.worstLoss)}</ConfidentialValue>}
             icon={AlertTriangle}
             variant="loss"
             delay={750}
           />
           <StatCard
             title={t('avgProfitPerTrade')}
-            value={formatAmount(stats.avgProfitPerTrade)}
+            value={<ConfidentialValue>{formatAmount(stats.avgProfitPerTrade)}</ConfidentialValue>}
             icon={TrendingUp}
             variant="profit"
             delay={800}
           />
           <StatCard
             title={t('avgLossPerTrade')}
-            value={formatAmount(stats.avgLossPerTrade)}
+            value={<ConfidentialValue>{formatAmount(stats.avgLossPerTrade)}</ConfidentialValue>}
             icon={TrendingDown}
             variant="loss"
             delay={850}
           />
           <StatCard
             title={t('totalProfit')}
-            value={formatAmount(stats.totalProfit)}
+            value={<ConfidentialValue>{formatAmount(stats.totalProfit)}</ConfidentialValue>}
             icon={DollarSign}
             variant="profit"
             delay={900}
           />
           <StatCard
             title={t('totalLoss')}
-            value={formatAmount(stats.totalLoss)}
+            value={<ConfidentialValue>{formatAmount(stats.totalLoss)}</ConfidentialValue>}
             icon={DollarSign}
             variant="loss"
             delay={950}
@@ -351,7 +352,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <StatCard
             title={t('netProfit')}
-            value={formatAmount(stats.netProfit)}
+            value={<ConfidentialValue>{formatAmount(stats.netProfit)}</ConfidentialValue>}
             icon={DollarSign}
             variant={stats.netProfit >= 0 ? 'profit' : 'loss'}
             delay={1050}
@@ -372,7 +373,7 @@ const Dashboard: React.FC = () => {
           />
           <StatCard
             title={t('avgTradeResult')}
-            value={formatAmount(stats.avgTradeResult)}
+            value={<ConfidentialValue>{formatAmount(stats.avgTradeResult)}</ConfidentialValue>}
             icon={BarChart3}
             variant={stats.avgTradeResult >= 0 ? 'profit' : 'loss'}
             delay={1200}
