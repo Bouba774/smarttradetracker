@@ -5,9 +5,11 @@ import { useChallenges } from '@/hooks/useChallenges';
 import { useTrades } from '@/hooks/useTrades';
 import { useAdvancedStats } from '@/hooks/useAdvancedStats';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useTradeFocus } from '@/hooks/useTradeFocus';
 import { APP_VERSION } from '@/lib/version';
 import StatCard from '@/components/ui/StatCard';
 import GaugeChart from '@/components/ui/GaugeChart';
+import TradeFocusMode from '@/components/TradeFocusMode';
 import {
   TrendingUp,
   TrendingDown,
@@ -27,7 +29,9 @@ import {
   Layers,
   Flame,
   Award,
+  Focus,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   AreaChart,
   Area,
@@ -60,6 +64,12 @@ const Dashboard: React.FC = () => {
   const { trades, isLoading } = useTrades();
   const stats = useAdvancedStats(trades);
   const { formatAmount } = useCurrency();
+  const { isEnabled: focusEnabled, toggle: toggleFocus } = useTradeFocus();
+
+  // Render Trade Focus Mode if enabled
+  if (focusEnabled) {
+    return <TradeFocusMode />;
+  }
 
   // User profile from auth
   const userNickname = profile?.nickname || 'Trader';
@@ -173,6 +183,15 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFocus}
+              className="gap-2"
+            >
+              <Focus className="w-4 h-4" />
+              {language === 'fr' ? 'Mode Focus' : 'Focus Mode'}
+            </Button>
             <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-lg bg-primary/20 border border-primary/30">
               <span className="text-xl sm:text-2xl">🏆</span>
               <div>
