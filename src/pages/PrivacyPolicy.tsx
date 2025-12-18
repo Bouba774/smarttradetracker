@@ -11,7 +11,7 @@ const PrivacyPolicy: React.FC = () => {
   const contentFR = (
     <>
       <h1 className="text-2xl font-bold text-foreground mb-2">RÈGLES DE CONFIDENTIALITÉ (Politique de Confidentialité) — RGPD</h1>
-      <p className="text-muted-foreground mb-6">Dernière mise à jour : 11/12/2025</p>
+      <p className="text-muted-foreground mb-6">Dernière mise à jour : 18/12/2025</p>
       
       <p className="mb-6">
         La présente Politique de Confidentialité explique comment Smart Trade Tracker (« l'Application », « nous ») collecte, utilise, protège et traite les données personnelles de ses utilisateurs (« vous »). Nous nous engageons à respecter le Règlement Général sur la Protection des Données (RGPD) et toutes les lois applicables.
@@ -22,68 +22,103 @@ const PrivacyPolicy: React.FC = () => {
 
       <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.1 Données fournies par l'utilisateur</h3>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Pseudo, email</li>
-        <li>Informations liées au trading : trades, notes, journaux, statistiques, vidéos/audio</li>
-        <li>Préférences de langue, devise, paramètres utilisateur</li>
+        <li>Pseudo, email, photo de profil optionnelle</li>
+        <li>Informations liées au trading : trades, notes, journaux, statistiques, vidéos/audio, images</li>
+        <li>Préférences : langue, devise (parmi 51), thème, paramètres d'affichage</li>
+        <li>Paramètres de sécurité : code PIN (hashé), préférences biométriques, timeout de verrouillage</li>
+        <li>Objectifs de trading : objectifs hebdomadaires et mensuels</li>
       </ul>
 
-      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.2 Données techniques</h3>
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.2 Données de sécurité</h3>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Identifiant unique de l'app (non identifiable)</li>
-        <li>Modèle de l'appareil, OS</li>
-        <li>Journaux d'erreur et performances</li>
+        <li>Appareils connus (empreinte de l'appareil pour détection de nouveaux appareils)</li>
+        <li>Historique des tentatives de connexion PIN</li>
+        <li>Alertes de sécurité envoyées par email</li>
       </ul>
 
-      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.3 Aucune donnée sensible</h3>
-      <p className="text-muted-foreground mb-4">Pas de données liées à la santé, religion, GPS ou données bancaires.</p>
-
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">2. Finalités</h2>
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.3 Données techniques</h3>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Fonctionnement de l'app</li>
-        <li>Statistiques et analyses</li>
-        <li>Sauvegarde de l'historique</li>
-        <li>Personnalisation</li>
-        <li>Améliorations et correction de bugs</li>
-        <li>Sécurité</li>
-        <li>Aucune revente de données</li>
+        <li>Identifiant unique de l'app (non identifiable personnellement)</li>
+        <li>Modèle de l'appareil, système d'exploitation</li>
+        <li>Journaux d'erreur et données de performance</li>
+      </ul>
+
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.4 Aucune donnée sensible</h3>
+      <p className="text-muted-foreground mb-4">Nous ne collectons pas de données liées à la santé, religion, localisation GPS ou informations bancaires.</p>
+
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">2. Finalités du traitement</h2>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>Fonctionnement de l'application et de toutes ses fonctionnalités</li>
+        <li>Calcul de statistiques et analyses psychologiques</li>
+        <li>Génération de résumés IA personnalisés</li>
+        <li>Synchronisation des paramètres entre appareils</li>
+        <li>Protection de votre compte (PIN, biométrie, alertes de sécurité)</li>
+        <li>Amélioration continue et correction de bugs</li>
+        <li>Aucune revente ou partage de données personnelles</li>
       </ul>
 
       <h2 className="text-xl font-bold text-foreground mt-8 mb-4">3. Base légale</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Exécution du service</li>
-        <li>Consentement</li>
-        <li>Intérêt légitime</li>
+        <li>Exécution du service demandé</li>
+        <li>Consentement explicite lors de l'inscription</li>
+        <li>Intérêt légitime pour la sécurité et l'amélioration du service</li>
       </ul>
 
       <h2 className="text-xl font-bold text-foreground mt-8 mb-4">4. Stockage et sécurité</h2>
-      <p className="text-muted-foreground mb-4">Cryptage, serveurs sécurisés, restrictions d'accès</p>
-
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">5. Durée</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Conservation tant que le compte existe</li>
-        <li>Suppression possible à tout moment</li>
+        <li>Données cryptées en transit et au repos</li>
+        <li>Serveurs sécurisés avec restrictions d'accès</li>
+        <li>Code PIN stocké sous forme hashée (jamais en clair)</li>
+        <li>Synchronisation sécurisée entre appareils</li>
+        <li>Alertes automatiques en cas de connexion suspecte</li>
       </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">6. Partage</h2>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">5. Durée de conservation</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Données anonymisées uniquement</li>
-        <li>Jamais de vente de données personnelles</li>
+        <li>Données conservées tant que le compte existe</li>
+        <li>Suppression possible à tout moment via les paramètres</li>
+        <li>Option de suppression complète de toutes les données</li>
       </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">7. Droits (RGPD)</h2>
-      <p className="text-muted-foreground mb-4">Accès, rectification, opposition, effacement, portabilité, limitation</p>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">6. Partage des données</h2>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>Aucune vente de données personnelles</li>
+        <li>Données techniques anonymisées uniquement pour amélioration du service</li>
+        <li>Aucun partage avec des tiers à des fins publicitaires</li>
+      </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">8. Cookies</h2>
-      <p className="mb-4">Notre application utilise uniquement des cookies fonctionnels essentiels :</p>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">7. Vos droits (RGPD)</h2>
+      <p className="text-muted-foreground mb-4">Conformément au RGPD, vous disposez des droits suivants :</p>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>Droit d'accès à vos données</li>
+        <li>Droit de rectification</li>
+        <li>Droit d'opposition au traitement</li>
+        <li>Droit à l'effacement (suppression du compte)</li>
+        <li>Droit à la portabilité (export PDF)</li>
+        <li>Droit à la limitation du traitement</li>
+      </ul>
+      <p className="text-muted-foreground mb-4">
+        Pour exercer ces droits : <a href="mailto:alphafx@outlook.fr" className="text-profit hover:underline">alphafx@outlook.fr</a>
+      </p>
+
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">8. Cookies et stockage local</h2>
+      <p className="mb-4">Notre application utilise uniquement des cookies fonctionnels essentiels et le stockage local :</p>
       
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
         <li>Préférences utilisateur (langue, thème, devise)</li>
         <li>État de connexion et authentification</li>
         <li>Consentement aux cookies</li>
+        <li>Données temporaires de verrouillage PIN (locales uniquement)</li>
+        <li>Cache de données pour performance</li>
       </ul>
 
       <p className="text-muted-foreground mb-4">
-        Aucun cookie publicitaire ou de suivi tiers n'est utilisé. Nous respectons votre vie privée.
+        <strong>Aucun cookie publicitaire ou de suivi tiers n'est utilisé.</strong> Nous respectons votre vie privée.
+      </p>
+
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">9. Contact</h2>
+      <p className="text-muted-foreground mb-4">
+        Pour toute question concernant cette politique : <a href="mailto:alphafx@outlook.fr" className="text-profit hover:underline">alphafx@outlook.fr</a>
       </p>
     </>
   );
@@ -91,79 +126,114 @@ const PrivacyPolicy: React.FC = () => {
   const contentEN = (
     <>
       <h1 className="text-2xl font-bold text-foreground mb-2">PRIVACY POLICY — GDPR COMPLIANT</h1>
-      <p className="text-muted-foreground mb-6">Last updated: 11/12/2025</p>
+      <p className="text-muted-foreground mb-6">Last updated: 18/12/2025</p>
       
       <p className="mb-6">
         This Privacy Policy explains how Smart Trade Tracker ("the Application", "we") collects, uses, protects, and processes personal data of its users ("you"). We comply with the General Data Protection Regulation (GDPR) and applicable laws.
       </p>
 
       <h2 className="text-xl font-bold text-foreground mt-8 mb-4">1. Data collected</h2>
-      <p className="mb-4">Only what is required for proper functioning.</p>
+      <p className="mb-4">We only collect data necessary for the application to function properly.</p>
 
       <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.1 User-provided data</h3>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Name, email</li>
-        <li>Trading information: trades, notes, journals, stats, video/audio</li>
-        <li>Language preferences, currency, settings</li>
+        <li>Username, email, optional profile photo</li>
+        <li>Trading information: trades, notes, journals, statistics, videos/audio, images</li>
+        <li>Preferences: language, currency (among 51), theme, display settings</li>
+        <li>Security settings: PIN code (hashed), biometric preferences, lock timeout</li>
+        <li>Trading objectives: weekly and monthly goals</li>
       </ul>
 
-      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.2 Technical data</h3>
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.2 Security data</h3>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Unique app identifier</li>
-        <li>Device model, OS</li>
+        <li>Known devices (device fingerprint for new device detection)</li>
+        <li>PIN login attempt history</li>
+        <li>Security alerts sent via email</li>
+      </ul>
+
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.3 Technical data</h3>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>Unique app identifier (not personally identifiable)</li>
+        <li>Device model, operating system</li>
         <li>Error logs and performance data</li>
       </ul>
 
-      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.3 No sensitive data</h3>
-      <p className="text-muted-foreground mb-4">No health, religion, GPS or banking information</p>
+      <h3 className="text-lg font-semibold text-foreground mt-6 mb-3">1.4 No sensitive data</h3>
+      <p className="text-muted-foreground mb-4">We do not collect health, religion, GPS location or banking information.</p>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">2. Purpose</h2>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">2. Purpose of processing</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Functionality</li>
-        <li>Analytics</li>
-        <li>History storage</li>
-        <li>Customization</li>
-        <li>Improvements</li>
-        <li>Security</li>
-        <li>No data selling</li>
+        <li>Application functionality and all features</li>
+        <li>Statistics calculation and psychological analysis</li>
+        <li>Personalized AI summary generation</li>
+        <li>Settings synchronization across devices</li>
+        <li>Account protection (PIN, biometrics, security alerts)</li>
+        <li>Continuous improvement and bug fixes</li>
+        <li>No selling or sharing of personal data</li>
       </ul>
 
       <h2 className="text-xl font-bold text-foreground mt-8 mb-4">3. Legal basis</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Service performance</li>
-        <li>Consent</li>
-        <li>Legitimate interest</li>
+        <li>Performance of requested service</li>
+        <li>Explicit consent during registration</li>
+        <li>Legitimate interest for security and service improvement</li>
       </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">4. Security</h2>
-      <p className="text-muted-foreground mb-4">Encryption, secure servers, access restriction</p>
-
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">5. Retention</h2>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">4. Storage and security</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Stored while account exists</li>
-        <li>Deletion upon request</li>
+        <li>Data encrypted in transit and at rest</li>
+        <li>Secure servers with access restrictions</li>
+        <li>PIN code stored as hash (never in plain text)</li>
+        <li>Secure synchronization between devices</li>
+        <li>Automatic alerts for suspicious login</li>
       </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">6. Sharing</h2>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">5. Retention period</h2>
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
-        <li>Anonymized technical data only</li>
-        <li>Never sold</li>
+        <li>Data stored as long as account exists</li>
+        <li>Deletion possible at any time via settings</li>
+        <li>Option to completely delete all data</li>
       </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">7. Rights</h2>
-      <p className="text-muted-foreground mb-4">Access, correction, deletion, objection, portability</p>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">6. Data sharing</h2>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>No selling of personal data</li>
+        <li>Anonymized technical data only for service improvement</li>
+        <li>No sharing with third parties for advertising purposes</li>
+      </ul>
 
-      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">8. Cookies</h2>
-      <p className="mb-4">Our application uses only essential functional cookies:</p>
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">7. Your rights (GDPR)</h2>
+      <p className="text-muted-foreground mb-4">Under GDPR, you have the following rights:</p>
+      <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
+        <li>Right of access to your data</li>
+        <li>Right to rectification</li>
+        <li>Right to object to processing</li>
+        <li>Right to erasure (account deletion)</li>
+        <li>Right to portability (PDF export)</li>
+        <li>Right to restriction of processing</li>
+      </ul>
+      <p className="text-muted-foreground mb-4">
+        To exercise these rights: <a href="mailto:alphafx@outlook.fr" className="text-profit hover:underline">alphafx@outlook.fr</a>
+      </p>
+
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">8. Cookies and local storage</h2>
+      <p className="mb-4">Our application uses only essential functional cookies and local storage:</p>
       
       <ul className="list-disc list-inside mb-4 space-y-1 text-muted-foreground">
         <li>User preferences (language, theme, currency)</li>
         <li>Login state and authentication</li>
         <li>Cookie consent status</li>
+        <li>Temporary PIN lock data (local only)</li>
+        <li>Data cache for performance</li>
       </ul>
 
       <p className="text-muted-foreground mb-4">
-        No advertising or third-party tracking cookies are used. We respect your privacy.
+        <strong>No advertising or third-party tracking cookies are used.</strong> We respect your privacy.
+      </p>
+
+      <h2 className="text-xl font-bold text-foreground mt-8 mb-4">9. Contact</h2>
+      <p className="text-muted-foreground mb-4">
+        For any questions regarding this policy: <a href="mailto:alphafx@outlook.fr" className="text-profit hover:underline">alphafx@outlook.fr</a>
       </p>
     </>
   );

@@ -194,23 +194,27 @@ const Landing = () => {
   };
 
   const features = [
-    { icon: BarChart3, title: language === 'fr' ? 'Tableau de Bord' : 'Dashboard', desc: language === 'fr' ? 'Vue complète de vos performances avec statistiques en temps réel.' : 'Complete view of your performance with real-time statistics.' },
-    { icon: TrendingUp, title: language === 'fr' ? 'Historique Complet' : 'Full History', desc: language === 'fr' ? 'Enregistrez chaque trade avec tous les détails importants.' : 'Record every trade with all important details.' },
-    { icon: Heart, title: language === 'fr' ? 'Analyse Émotionnelle' : 'Emotional Analysis', desc: language === 'fr' ? 'Comprenez l\'impact de vos émotions sur vos décisions.' : 'Understand the impact of your emotions on decisions.' },
-    { icon: Brain, title: language === 'fr' ? 'Outils Psychologiques' : 'Psychological Tools', desc: language === 'fr' ? 'Identifiez vos patterns comportementaux.' : 'Identify your behavioral patterns.' },
-    { icon: Video, title: language === 'fr' ? 'Journal Vidéo/Audio' : 'Video/Audio Journal', desc: language === 'fr' ? 'Capturez vos analyses en vidéo ou audio.' : 'Capture your analyses in video or audio.' },
-    { icon: Calculator, title: language === 'fr' ? 'Calculatrice de Lot' : 'Lot Calculator', desc: language === 'fr' ? 'Calculez vos positions optimales.' : 'Calculate your optimal positions.' },
-    { icon: Trophy, title: language === 'fr' ? 'Défis & Gamification' : 'Challenges', desc: language === 'fr' ? 'Progressez avec des défis stimulants.' : 'Progress with stimulating challenges.' },
-    { icon: Bot, title: language === 'fr' ? 'Assistant IA' : 'AI Assistant', desc: language === 'fr' ? 'Obtenez des insights personnalisés 24/7.' : 'Get personalized insights 24/7.' },
+    { icon: BarChart3, title: language === 'fr' ? 'Tableau de Bord' : 'Dashboard', desc: language === 'fr' ? 'Vue complète de vos performances avec 30+ statistiques en temps réel.' : 'Complete view of your performance with 30+ real-time statistics.' },
+    { icon: TrendingUp, title: language === 'fr' ? 'Historique Complet' : 'Full History', desc: language === 'fr' ? 'Enregistrez, modifiez et analysez chaque trade avec images.' : 'Record, edit and analyze every trade with images.' },
+    { icon: Brain, title: language === 'fr' ? 'Analyse Psychologique' : 'Psychological Analysis', desc: language === 'fr' ? 'Score de discipline, fatigue mentale, profil trader et patterns.' : 'Discipline score, mental fatigue, trader profile and patterns.' },
+    { icon: Heart, title: language === 'fr' ? 'Mémoire Émotionnelle' : 'Emotional Memory', desc: language === 'fr' ? 'Corrélation émotions-résultats et détection d\'auto-sabotage.' : 'Emotion-results correlation and self-sabotage detection.' },
+    { icon: Video, title: language === 'fr' ? 'Journal Vidéo/Audio' : 'Video/Audio Journal', desc: language === 'fr' ? 'Capturez vos analyses jusqu\'à 60 secondes.' : 'Capture your analyses up to 60 seconds.' },
+    { icon: Calculator, title: language === 'fr' ? 'Calculatrice de Lot' : 'Lot Calculator', desc: language === 'fr' ? 'Calcul automatique et transfert vers formulaire de trade.' : 'Automatic calculation and transfer to trade form.' },
+    { icon: Trophy, title: language === 'fr' ? 'Défis & Récompenses' : 'Challenges & Rewards', desc: language === 'fr' ? 'Coffres de récompense et badges à débloquer.' : 'Reward chests and badges to unlock.' },
+    { icon: Bot, title: language === 'fr' ? 'Assistant IA' : 'AI Assistant', desc: language === 'fr' ? 'Résumé quotidien IA et insights personnalisés.' : 'Daily AI summary and personalized insights.' },
+    { icon: Lock, title: language === 'fr' ? 'Sécurité PIN' : 'PIN Security', desc: language === 'fr' ? 'Protection par PIN et authentification biométrique.' : 'PIN protection and biometric authentication.' },
+    { icon: Shield, title: language === 'fr' ? 'Mode Confidentiel' : 'Confidential Mode', desc: language === 'fr' ? 'Masquez vos données sensibles en un clic.' : 'Hide your sensitive data with one click.' },
   ];
 
   const benefits = [
-    language === 'fr' ? 'Suivi de trades illimité' : 'Unlimited trade tracking',
+    language === 'fr' ? 'Synchronisation multi-appareils' : 'Multi-device sync',
     language === 'fr' ? 'Analyse psychologique avancée' : 'Advanced psychological analysis',
-    language === 'fr' ? 'Conversion de devises en temps réel' : 'Real-time currency conversion',
+    language === 'fr' ? '51 devises supportées' : '51 currencies supported',
     language === 'fr' ? 'Export PDF professionnel' : 'Professional PDF export',
-    language === 'fr' ? 'Assistant IA intégré' : 'Integrated AI assistant',
-    language === 'fr' ? 'Données sécurisées' : 'Secured data',
+    language === 'fr' ? 'Protection PIN & biométrie' : 'PIN & biometric protection',
+    language === 'fr' ? 'Mode Focus anti-distraction' : 'Focus mode anti-distraction',
+    language === 'fr' ? 'Comparaison de périodes' : 'Period comparison',
+    language === 'fr' ? 'Alertes de sécurité par email' : 'Email security alerts',
   ];
 
   const commitments = [
@@ -230,32 +234,32 @@ const Landing = () => {
     {
       question: language === 'fr' ? 'Mes données sont-elles sécurisées ?' : 'Is my data secure?',
       answer: language === 'fr'
-        ? 'Absolument. Vos données sont cryptées et stockées de manière sécurisée. Nous ne partageons jamais vos informations avec des tiers et vous gardez le contrôle total de vos données.'
-        : 'Absolutely. Your data is encrypted and stored securely. We never share your information with third parties and you keep full control of your data.'
+        ? 'Absolument. Vos données sont protégées par PIN et authentification biométrique, cryptées et synchronisées en temps réel. Vous recevez des alertes email en cas de connexion depuis un nouvel appareil.'
+        : 'Absolutely. Your data is protected by PIN and biometric authentication, encrypted and synced in real-time. You receive email alerts when connecting from a new device.'
     },
     {
-      question: language === 'fr' ? 'Quels marchés puis-je suivre ?' : 'What markets can I track?',
+      question: language === 'fr' ? 'Mes paramètres sont-ils synchronisés entre appareils ?' : 'Are my settings synced across devices?',
       answer: language === 'fr'
-        ? 'Vous pouvez suivre tous les marchés : Forex, Crypto, Indices, Métaux, Actions et plus encore. Le calculateur de lot s\'adapte automatiquement à chaque type d\'actif.'
-        : 'You can track all markets: Forex, Crypto, Indices, Metals, Stocks and more. The lot calculator automatically adapts to each asset type.'
+        ? 'Oui, tous vos paramètres (PIN, mode confidentiel, préférences) sont automatiquement synchronisés sur tous vos appareils. Connectez-vous et retrouvez votre configuration.'
+        : 'Yes, all your settings (PIN, confidential mode, preferences) are automatically synced across all your devices. Log in and find your configuration.'
     },
     {
-      question: language === 'fr' ? 'Comment fonctionne l\'assistant IA ?' : 'How does the AI assistant work?',
+      question: language === 'fr' ? 'Quelles analyses psychologiques sont disponibles ?' : 'What psychological analyses are available?',
       answer: language === 'fr'
-        ? 'L\'assistant IA analyse vos trades et votre comportement pour vous fournir des insights personnalisés. Il peut répondre à vos questions sur vos performances et vous aider à identifier des patterns.'
-        : 'The AI assistant analyzes your trades and behavior to provide personalized insights. It can answer questions about your performance and help you identify patterns.'
+        ? 'Score de discipline, indice de fatigue mentale, détection d\'auto-sabotage, mémoire émotionnelle, analyse R-multiple, profil de trader, patterns récurrents, heatmap de performance et résumé IA quotidien.'
+        : 'Discipline score, mental fatigue index, self-sabotage detection, emotional memory, R-multiple analysis, trader profile, recurring patterns, performance heatmap and daily AI summary.'
     },
     {
-      question: language === 'fr' ? 'Puis-je exporter mes données ?' : 'Can I export my data?',
+      question: language === 'fr' ? 'Combien de devises sont supportées ?' : 'How many currencies are supported?',
       answer: language === 'fr'
-        ? 'Oui, vous pouvez exporter vos données en PDF professionnel avec toutes vos statistiques, graphiques et analyses pour une période de votre choix.'
-        : 'Yes, you can export your data as a professional PDF with all your statistics, charts and analyses for a period of your choice.'
+        ? '51 devises sont supportées avec conversion en temps réel. Changez votre devise préférée dans les paramètres et tous vos montants seront automatiquement convertis.'
+        : '51 currencies are supported with real-time conversion. Change your preferred currency in settings and all your amounts will be automatically converted.'
     },
     {
       question: language === 'fr' ? 'L\'application fonctionne-t-elle sur mobile ?' : 'Does the app work on mobile?',
       answer: language === 'fr'
-        ? 'Oui, Smart Trade Tracker est entièrement responsive et fonctionne parfaitement sur tous les appareils : smartphone, tablette et ordinateur.'
-        : 'Yes, Smart Trade Tracker is fully responsive and works perfectly on all devices: smartphone, tablet and computer.'
+        ? 'Oui, Smart Trade Tracker est 100% responsive et optimisé mobile-first. Journal vidéo/audio, mode focus et toutes les fonctionnalités sont accessibles sur smartphone.'
+        : 'Yes, Smart Trade Tracker is 100% responsive and mobile-first optimized. Video/audio journal, focus mode and all features are accessible on smartphone.'
     }
   ];
 
