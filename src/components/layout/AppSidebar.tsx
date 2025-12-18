@@ -135,7 +135,7 @@ const AppSidebar: React.FC = () => {
                           to={item.path}
                           onClick={handleNavClick}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-300 group relative touch-target",
+                            "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors duration-75 group relative touch-target",
                             isActive
                               ? "bg-primary/20 text-primary shadow-neon border-l-2 border-primary"
                               : "text-muted-foreground hover:text-primary hover:bg-primary/10 active:bg-primary/20"
