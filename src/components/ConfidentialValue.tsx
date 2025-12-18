@@ -17,15 +17,8 @@ export const ConfidentialValue: React.FC<ConfidentialValueProps> = ({
 
   if (settings.confidentialMode) {
     return (
-      <Component
-        className={cn(
-          "select-none",
-          "blur-sm hover:blur-none transition-all duration-300",
-          className
-        )}
-        title="Click and hold to reveal"
-      >
-        {children}
+      <Component className={cn("select-none", className)}>
+        ****
       </Component>
     );
   }
