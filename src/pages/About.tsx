@@ -9,40 +9,44 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const About: React.FC = () => {
   const { t } = useLanguage();
 
+  const { language } = useLanguage();
+
   const features = [
-    { icon: BarChart3, title: t('featureDashboard'), description: t('featureDashboardDesc') },
-    { icon: TrendingUp, title: t('featureTradeEntry'), description: t('featureTradeEntryDesc') },
-    { icon: Sparkles, title: t('featureReports'), description: t('featureReportsDesc') },
-    { icon: Brain, title: t('featureEmotional'), description: t('featureEmotionalDesc') },
-    { icon: Target, title: t('featurePsychology'), description: t('featurePsychologyDesc') },
-    { icon: Video, title: t('featureVideoJournal'), description: t('featureVideoJournalDesc') },
-    { icon: BookOpen, title: t('featureLessons'), description: t('featureLessonsDesc') },
-    { icon: Trophy, title: t('featureChallenges'), description: t('featureChallengesDesc') },
-    { icon: Calculator, title: t('featureCalculator'), description: t('featureCalculatorDesc') },
-    { icon: Bot, title: t('featureAI'), description: t('featureAIDesc') },
+    { icon: BarChart3, title: t('featureDashboard'), description: language === 'fr' ? '30+ statistiques en temps réel, graphiques et indicateurs de performance' : '30+ real-time statistics, charts and performance indicators' },
+    { icon: TrendingUp, title: t('featureTradeEntry'), description: language === 'fr' ? 'Enregistrement complet avec images, édition et transfert depuis calculatrice' : 'Complete recording with images, editing and transfer from calculator' },
+    { icon: Sparkles, title: t('featureReports'), description: language === 'fr' ? 'Export PDF professionnel et comparaison de périodes' : 'Professional PDF export and period comparison' },
+    { icon: Brain, title: language === 'fr' ? 'Analyse Psychologique' : 'Psychological Analysis', description: language === 'fr' ? 'Score de discipline, profil trader, fatigue mentale, patterns récurrents' : 'Discipline score, trader profile, mental fatigue, recurring patterns' },
+    { icon: Target, title: language === 'fr' ? 'Mémoire Émotionnelle' : 'Emotional Memory', description: language === 'fr' ? 'Corrélation émotions-résultats, détection d\'auto-sabotage, R-multiple' : 'Emotion-results correlation, self-sabotage detection, R-multiple' },
+    { icon: Video, title: t('featureVideoJournal'), description: language === 'fr' ? 'Enregistrement vidéo/audio jusqu\'à 60 secondes avec changement de caméra' : 'Video/audio recording up to 60 seconds with camera switching' },
+    { icon: BookOpen, title: t('featureLessons'), description: language === 'fr' ? 'Checklist éditable, objectifs quotidiens et calendrier historique' : 'Editable checklist, daily objectives and historical calendar' },
+    { icon: Trophy, title: language === 'fr' ? 'Défis & Récompenses' : 'Challenges & Rewards', description: language === 'fr' ? 'Coffres de récompense, badges et système de niveaux' : 'Reward chests, badges and level system' },
+    { icon: Calculator, title: t('featureCalculator'), description: language === 'fr' ? 'Calcul automatique avec transfert direct vers formulaire de trade' : 'Automatic calculation with direct transfer to trade form' },
+    { icon: Bot, title: t('featureAI'), description: language === 'fr' ? 'Résumé quotidien IA et assistant conversationnel personnalisé' : 'Daily AI summary and personalized conversational assistant' },
+    { icon: Lock, title: language === 'fr' ? 'Sécurité PIN' : 'PIN Security', description: language === 'fr' ? 'Protection PIN, biométrie, verrouillage auto et alertes email' : 'PIN protection, biometrics, auto-lock and email alerts' },
+    { icon: Shield, title: language === 'fr' ? 'Mode Confidentiel' : 'Confidential Mode', description: language === 'fr' ? 'Masquage des données sensibles et synchronisation multi-appareils' : 'Sensitive data masking and multi-device sync' },
   ];
 
   const uniqueFeatures = [
-    { icon: Zap, title: t('allInOneSystem'), description: t('allInOneDesc') },
-    { icon: Globe, title: t('autoCurrencyConversion'), description: t('autoCurrencyDesc') },
-    { icon: Palette, title: t('cleanUX'), description: t('cleanUXDesc') },
-    { icon: Brain, title: t('deepPsychology'), description: t('deepPsychologyDesc') },
-    { icon: Target, title: t('builtForDiscipline'), description: t('builtForDisciplineDesc') },
+    { icon: Zap, title: t('allInOneSystem'), description: language === 'fr' ? 'Journal, statistiques, psychologie, IA et sécurité dans une seule app' : 'Journal, statistics, psychology, AI and security in one app' },
+    { icon: Globe, title: language === 'fr' ? '51 Devises' : '51 Currencies', description: language === 'fr' ? 'Conversion automatique en temps réel avec taux de change actualisés' : 'Automatic real-time conversion with updated exchange rates' },
+    { icon: Palette, title: t('cleanUX'), description: language === 'fr' ? 'Interface mobile-first responsive et mode focus anti-distraction' : 'Mobile-first responsive interface and anti-distraction focus mode' },
+    { icon: Brain, title: language === 'fr' ? 'Suite Psychologique Complète' : 'Complete Psychological Suite', description: language === 'fr' ? '15+ outils d\'analyse psychologique et comportementale' : '15+ psychological and behavioral analysis tools' },
+    { icon: Target, title: t('builtForDiscipline'), description: language === 'fr' ? 'Streaks de discipline, heatmap de performance et score automatique' : 'Discipline streaks, performance heatmap and automatic score' },
   ];
 
   const problems = [
-    { title: t('emotionalTrading'), desc: t('emotionalTradingDesc') },
-    { title: t('inconsistency'), desc: t('inconsistencyDesc') },
-    { title: t('overtrading'), desc: t('overtradingDesc') },
-    { title: t('lackOfData'), desc: t('lackOfDataDesc') },
-    { title: t('confusion'), desc: t('confusionDesc') },
+    { title: t('emotionalTrading'), desc: language === 'fr' ? 'Détection d\'auto-sabotage et mémoire émotionnelle pour éviter les répétitions' : 'Self-sabotage detection and emotional memory to avoid repetition' },
+    { title: t('inconsistency'), desc: language === 'fr' ? 'Score de discipline automatique et streaks pour renforcer les bonnes habitudes' : 'Automatic discipline score and streaks to reinforce good habits' },
+    { title: t('overtrading'), desc: language === 'fr' ? 'Mode Focus avec limites de trades et alertes de fatigue mentale' : 'Focus mode with trade limits and mental fatigue alerts' },
+    { title: t('lackOfData'), desc: language === 'fr' ? '30+ statistiques, heatmap, analyse par session et stratégie' : '30+ statistics, heatmap, session and strategy analysis' },
+    { title: t('confusion'), desc: language === 'fr' ? 'Résumé IA quotidien et profil de trader personnalisé' : 'Daily AI summary and personalized trader profile' },
   ];
 
   const commitments = [
-    { icon: Lock, title: t('privacyProtection'), desc: t('privacyProtectionDesc') },
-    { icon: Shield, title: t('noDataSale'), desc: t('noDataSaleDesc') },
-    { icon: Eye, title: t('fullTransparency'), desc: t('fullTransparencyDesc') },
-    { icon: Zap, title: t('secureDataHandling'), desc: t('secureDataHandlingDesc') },
+    { icon: Lock, title: language === 'fr' ? 'Protection Avancée' : 'Advanced Protection', desc: language === 'fr' ? 'PIN, biométrie, verrouillage auto et alertes de connexion suspecte' : 'PIN, biometrics, auto-lock and suspicious login alerts' },
+    { icon: Shield, title: t('noDataSale'), desc: language === 'fr' ? 'Vos données ne sont jamais vendues ni partagées à des tiers' : 'Your data is never sold or shared with third parties' },
+    { icon: Eye, title: language === 'fr' ? 'Mode Confidentiel' : 'Confidential Mode', desc: language === 'fr' ? 'Masquez vos données sensibles en un clic' : 'Hide your sensitive data with one click' },
+    { icon: Zap, title: language === 'fr' ? 'Sync Multi-Appareils' : 'Multi-Device Sync', desc: language === 'fr' ? 'Paramètres de sécurité synchronisés sur tous vos appareils' : 'Security settings synchronized across all your devices' },
   ];
 
   return (
