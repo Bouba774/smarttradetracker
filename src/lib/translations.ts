@@ -642,6 +642,62 @@ export const translations: Translations = {
   // ============================================
   periodComparison: { fr: 'Comparaison', en: 'Comparison' },
   comparePeriods: { fr: 'Analysez vos performances mois vs mois', en: 'Analyze your performance month vs month' },
+
+  // ============================================
+  // R-MULTIPLE & DRAWDOWN
+  // ============================================
+  rMultipleAnalysis: { fr: 'Analyse R-Multiple', en: 'R-Multiple Analysis' },
+  avgR: { fr: 'R Moyen', en: 'Avg R' },
+  maxR: { fr: 'R Max', en: 'Max R' },
+  rLost: { fr: 'R Perdu', en: 'R Lost' },
+  rWon: { fr: 'R Gagné', en: 'R Won' },
+  rDistribution: { fr: 'Distribution R', en: 'R Distribution' },
+  drawdownAnalysis: { fr: 'Analyse Drawdown', en: 'Drawdown Analysis' },
+  avgDrawdownDuration: { fr: 'Durée Moy. DD', en: 'Avg DD Duration' },
+  recoveryTime: { fr: 'Temps de Récup.', en: 'Recovery Time' },
+  maxDepth: { fr: 'Profondeur Max', en: 'Max Depth' },
+  currentDrawdown: { fr: 'DD Actuel', en: 'Current DD' },
+  days: { fr: 'jours', en: 'days' },
+
+  // ============================================
+  // DISCIPLINE STREAKS
+  // ============================================
+  disciplineStreak: { fr: 'Série de Discipline', en: 'Discipline Streak' },
+  currentStreak: { fr: 'Série Actuelle', en: 'Current Streak' },
+  longestStreak: { fr: 'Plus Longue Série', en: 'Longest Streak' },
+  daysWithoutViolation: { fr: 'jours sans enfreindre le plan', en: 'days without breaking the plan' },
+  streakBroken: { fr: 'Série brisée', en: 'Streak broken' },
+
+  // ============================================
+  // SECRET CHALLENGES
+  // ============================================
+  secretChallenges: { fr: 'Défis Secrets', en: 'Secret Challenges' },
+  hiddenChallenge: { fr: 'Défi Caché', en: 'Hidden Challenge' },
+  unlockCondition: { fr: 'Condition de déblocage', en: 'Unlock condition' },
+  rare: { fr: 'Rare', en: 'Rare' },
+  epic: { fr: 'Épique', en: 'Epic' },
+  legendary: { fr: 'Légendaire', en: 'Legendary' },
+
+  // ============================================
+  // PATTERN DETECTION
+  // ============================================
+  patternDetection: { fr: 'Détection de Patterns', en: 'Pattern Detection' },
+  personalPatterns: { fr: 'Patterns Personnels', en: 'Personal Patterns' },
+  cognitiveBiases: { fr: 'Biais Cognitifs', en: 'Cognitive Biases' },
+  yourStrengths: { fr: 'Vos Forces', en: 'Your Strengths' },
+  yourWeaknesses: { fr: 'Vos Faiblesses', en: 'Your Weaknesses' },
+
+  // ============================================
+  // TRADE FOCUS MODE
+  // ============================================
+  tradeFocusMode: { fr: 'Mode Focus', en: 'Focus Mode' },
+  focusOnPlan: { fr: 'Concentrez-vous sur votre plan', en: 'Focus on your plan' },
+  tradingPlan: { fr: 'Plan de Trading', en: 'Trading Plan' },
+  dailyGoal: { fr: 'Objectif du Jour', en: 'Daily Goal' },
+  maxTradesDay: { fr: 'Max trades/jour', en: 'Max trades/day' },
+  maxLossDay: { fr: 'Perte max ($)', en: 'Max loss ($)' },
+  tradesToday: { fr: "Trades aujourd'hui", en: 'Trades today' },
+  stopTradingWarning: { fr: "Arrêtez de trader pour aujourd'hui", en: 'Stop trading for today' },
 };
 
 
