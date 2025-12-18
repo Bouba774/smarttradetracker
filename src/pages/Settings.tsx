@@ -30,11 +30,13 @@ import {
   Coins,
   Focus,
   Target,
+  Shield,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CURRENCIES, getCurrencyLabel } from '@/data/currencies';
 import { ExchangeRateIndicator } from '@/components/ExchangeRateIndicator';
+import { SecuritySettings } from '@/components/SecuritySettings';
 
 const SETTINGS_STORAGE_KEY = 'smart-trade-tracker-settings';
 
@@ -521,8 +523,19 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
+      {/* Security Settings */}
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Shield className="w-5 h-5 text-primary" />
+          <h2 className="font-display text-xl font-bold text-foreground">
+            {language === 'fr' ? 'Sécurité Renforcée' : 'Enhanced Security'}
+          </h2>
+        </div>
+        <SecuritySettings />
+      </div>
+
       {/* Reset Button */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '400ms' }}>
+      <div className="glass-card p-6 animate-fade-in mt-6" style={{ animationDelay: '400ms' }}>
         <Button
           variant="outline"
           className="w-full gap-3 h-12"
