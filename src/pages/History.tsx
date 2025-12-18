@@ -444,7 +444,7 @@ const History: React.FC = () => {
                         }
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {trade.lot_size} lots
+                        <ConfidentialValue>{trade.lot_size} lots</ConfidentialValue>
                       </p>
                     </div>
                     <Button

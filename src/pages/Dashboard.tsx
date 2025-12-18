@@ -283,7 +283,7 @@ const Dashboard: React.FC = () => {
           />
           <StatCard
             title={t('avgLotSize')}
-            value={stats.avgLotSize.toFixed(2)}
+            value={<ConfidentialValue>{stats.avgLotSize.toFixed(2)}</ConfidentialValue>}
             icon={Layers}
             delay={550}
           />
