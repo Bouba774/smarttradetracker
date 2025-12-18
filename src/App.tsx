@@ -7,8 +7,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SecurityProvider } from "@/contexts/SecurityContext";
 import Layout from "@/components/layout/Layout";
 import { CookieConsent } from "@/components/CookieConsent";
+import LockScreen from "@/components/LockScreen";
 
 // Critical pages loaded immediately
 import Landing from "./pages/Landing";
@@ -69,6 +71,9 @@ const AppContent = () => {
 
   return (
     <>
+      {/* Lock Screen - appears on top of everything when locked */}
+      {user && <LockScreen />}
+      
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public landing page */}
@@ -114,14 +119,16 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppContent />
-              <CookieConsent />
-            </BrowserRouter>
-          </TooltipProvider>
+          <SecurityProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppContent />
+                <CookieConsent />
+              </BrowserRouter>
+            </TooltipProvider>
+          </SecurityProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
