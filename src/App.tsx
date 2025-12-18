@@ -20,6 +20,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AddTrade = lazy(() => import("./pages/AddTrade"));
 const History = lazy(() => import("./pages/History"));
 const Reports = lazy(() => import("./pages/Reports"));
+const PeriodComparison = lazy(() => import("./pages/PeriodComparison"));
 const PsychologicalAnalysis = lazy(() => import("./pages/PsychologicalAnalysis"));
 const VideoJournal = lazy(() => import("./pages/VideoJournal"));
 const Journal = lazy(() => import("./pages/Journal"));
@@ -87,6 +88,7 @@ const AppContent = () => {
           <Route path="/add-trade" element={<ProtectedRoute><Layout><AddTrade /></Layout></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><Layout><History /></Layout></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+          <Route path="/comparison" element={<ProtectedRoute><Layout><PeriodComparison /></Layout></ProtectedRoute>} />
           <Route path="/psychology" element={<ProtectedRoute><Layout><PsychologicalAnalysis /></Layout></ProtectedRoute>} />
           <Route path="/video-journal" element={<ProtectedRoute><Layout><VideoJournal /></Layout></ProtectedRoute>} />
           <Route path="/journal" element={<ProtectedRoute><Layout><Journal /></Layout></ProtectedRoute>} />
