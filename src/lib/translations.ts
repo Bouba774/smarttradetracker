@@ -635,6 +635,12 @@ export const translations: Translations = {
   // ============================================
   challengesTakeOn: { fr: 'Relevez des défis et montez en niveau', en: 'Take on challenges and level up' },
   niv: { fr: 'Niv.', en: 'Lv.' },
+
+  // ============================================
+  // PERIOD COMPARISON
+  // ============================================
+  periodComparison: { fr: 'Comparaison', en: 'Comparison' },
+  comparePeriods: { fr: 'Analysez vos performances mois vs mois', en: 'Analyze your performance month vs month' },
 };
 
 
