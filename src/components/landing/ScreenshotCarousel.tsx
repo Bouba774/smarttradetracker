@@ -1,21 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Screenshot {
   src: string;
-  altFr: string;
-  altEn: string;
-  titleFr: string;
-  titleEn: string;
+  altKey: string;
+  titleKey: string;
 }
 
 interface ScreenshotCarouselProps {
   screenshots: Screenshot[];
-  language: string;
 }
 
-const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots, language }) => {
+const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots }) => {
+  const { t } = useLanguage();
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     loop: true,
     align: 'center',
@@ -121,7 +120,7 @@ const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots, la
                   
                   <img
                     src={screenshot.src}
-                    alt={language === 'fr' ? screenshot.altFr : screenshot.altEn}
+                    alt={t(screenshot.altKey)}
                     className="w-full h-72 sm:h-80 object-cover object-top relative z-10"
                     loading={index === 0 ? "eager" : "lazy"}
                     decoding="async"
@@ -135,7 +134,7 @@ const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots, la
                         isActive ? 'bg-profit animate-pulse' : 'bg-muted-foreground/50'
                       }`} />
                       <p className="text-sm font-medium text-foreground">
-                        {language === 'fr' ? screenshot.titleFr : screenshot.titleEn}
+                        {t(screenshot.titleKey)}
                       </p>
                     </div>
                   </div>
@@ -150,14 +149,14 @@ const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots, la
       <button
         onClick={scrollPrev}
         className="absolute left-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/90 backdrop-blur-md border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 z-10 shadow-lg hover:shadow-primary/30 hover:scale-110"
-        aria-label={language === 'fr' ? 'Précédent' : 'Previous'}
+        aria-label={t('carousel.previous')}
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
       <button
         onClick={scrollNext}
         className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-background/90 backdrop-blur-md border border-primary/30 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 z-10 shadow-lg hover:shadow-primary/30 hover:scale-110"
-        aria-label={language === 'fr' ? 'Suivant' : 'Next'}
+        aria-label={t('carousel.next')}
       >
         <ChevronRight className="w-5 h-5" />
       </button>
@@ -173,7 +172,7 @@ const ScreenshotCarousel: React.FC<ScreenshotCarouselProps> = ({ screenshots, la
                 ? 'bg-gradient-to-r from-primary to-profit w-8 shadow-lg shadow-primary/30' 
                 : 'bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2 hover:w-3'
             }`}
-            aria-label={`${language === 'fr' ? 'Aller à l\'image' : 'Go to image'} ${index + 1}`}
+            aria-label={`${t('carousel.goToImage')} ${index + 1}`}
           />
         ))}
       </div>
