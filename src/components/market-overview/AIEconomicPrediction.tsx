@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Brain, Loader2, AlertTriangle, TrendingUp, TrendingDown, Sparkles, Lock } from 'lucide-react';
+import { Brain, Loader2, AlertTriangle, TrendingUp, TrendingDown, Sparkles, Lock, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,7 +16,7 @@ interface EconomicEvent {
 }
 
 interface AIAnalysis {
-  eventId: string;
+  macroContext: string;
   scenarios: {
     aboveForecast: {
       impact: string;
@@ -30,7 +29,6 @@ interface AIAnalysis {
       probability: number;
     };
   };
-  macroContext: string;
 }
 
 // Mock events for AI analysis
@@ -40,94 +38,50 @@ const mockEvents: EconomicEvent[] = [
   { id: '3', event: 'NFP - Emplois non agricoles', currency: 'USD', time: '14:30', forecast: '180K', previous: '216K' },
 ];
 
-// Mock AI analysis
-const mockAnalyses: Record<string, AIAnalysis> = {
-  '1': {
-    eventId: '1',
-    scenarios: {
-      aboveForecast: {
-        impact: 'Renforcement du Dollar, pression sur l\'or et les actions. Les rendements obligataires pourraient grimper.',
-        affectedAssets: ['DXY ↑', 'XAUUSD ↓', 'SP500 ↓', 'EURUSD ↓'],
-        probability: 35,
-      },
-      belowForecast: {
-        impact: 'Affaiblissement du Dollar, rally des actifs risqués. L\'or et le Bitcoin pourraient s\'apprécier.',
-        affectedAssets: ['DXY ↓', 'XAUUSD ↑', 'BTC ↑', 'SP500 ↑'],
-        probability: 25,
-      },
-    },
-    macroContext: 'L\'inflation reste persistante à 3.1%. Le marché du travail montre des signes de ralentissement modéré. La Fed devrait maintenir son stance hawkish tout en laissant la porte ouverte à des baisses en 2025.',
-  },
-  '2': {
-    eventId: '2',
-    scenarios: {
-      aboveForecast: {
-        impact: 'Renforcement de l\'Euro, la BCE pourrait retarder les baisses de taux.',
-        affectedAssets: ['EURUSD ↑', 'DAX ↓', 'Bunds ↓'],
-        probability: 40,
-      },
-      belowForecast: {
-        impact: 'Affaiblissement de l\'Euro, anticipations de politique plus accommodante.',
-        affectedAssets: ['EURUSD ↓', 'DAX ↑', 'CAC40 ↑'],
-        probability: 30,
-      },
-    },
-    macroContext: 'L\'inflation en zone euro continue de décélérer mais reste au-dessus de la cible de 2%. La croissance économique stagne.',
-  },
-  '3': {
-    eventId: '3',
-    scenarios: {
-      aboveForecast: {
-        impact: 'Dollar fort, marché du travail robuste = moins de baisses de taux.',
-        affectedAssets: ['DXY ↑', 'USDJPY ↑', 'Actions ↓'],
-        probability: 45,
-      },
-      belowForecast: {
-        impact: 'Dollar faible, anticipations de pivot Fed = risk-on.',
-        affectedAssets: ['DXY ↓', 'XAUUSD ↑', 'Actions ↑', 'BTC ↑'],
-        probability: 35,
-      },
-    },
-    macroContext: 'Le marché du travail américain reste résilient malgré les hausses de taux agressives. Les secteurs cycliques montrent des faiblesses.',
-  },
-};
-
 const AIEconomicPrediction: React.FC = () => {
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPremium] = useState(true); // Mock premium status
 
-  const analyzeEvent = async (eventId: string) => {
-    setSelectedEvent(eventId);
+  const analyzeEvent = async (event: EconomicEvent) => {
+    setSelectedEvent(event);
     setIsLoading(true);
+    setAnalysis(null);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const { data, error } = await supabase.functions.invoke('market-analysis', {
+        body: {
+          type: 'economic_event',
+          data: {
+            event: {
+              name: event.event,
+              currency: event.currency,
+              forecast: event.forecast,
+              previous: event.previous,
+            }
+          }
+        }
+      });
 
-    // Use mock data
-    const mockAnalysis = mockAnalyses[eventId];
-    if (mockAnalysis) {
-      setAnalysis(mockAnalysis);
+      if (error) {
+        console.error('AI analysis error:', error);
+        toast.error('Erreur lors de l\'analyse IA');
+        return;
+      }
+
+      if (data?.analysis) {
+        setAnalysis(data.analysis);
+      } else {
+        toast.error('Réponse IA invalide');
+      }
+    } catch (err) {
+      console.error('Error calling AI:', err);
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
-
-  if (!isPremium) {
-    return (
-      <Card className="glass-card overflow-hidden">
-        <CardContent className="p-8 text-center">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-bold text-lg mb-2">Fonctionnalité Premium</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Accédez aux prédictions IA et analyses macro-économiques avancées.
-          </p>
-          <Button>Passer Premium</Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="glass-card overflow-hidden">
@@ -148,10 +102,10 @@ const AIEconomicPrediction: React.FC = () => {
           {mockEvents.map((event) => (
             <Button
               key={event.id}
-              variant={selectedEvent === event.id ? 'default' : 'outline'}
+              variant={selectedEvent?.id === event.id ? 'default' : 'outline'}
               size="sm"
               className="h-auto py-2 px-3 text-left flex-col items-start"
-              onClick={() => analyzeEvent(event.id)}
+              onClick={() => analyzeEvent(event)}
               disabled={isLoading}
             >
               <span className="font-medium text-xs truncate w-full">{event.event}</span>
@@ -245,7 +199,7 @@ const AIEconomicPrediction: React.FC = () => {
           <div className="text-center py-8">
             <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
             <p className="text-sm text-muted-foreground">
-              Sélectionnez un événement économique pour obtenir une analyse IA détaillée
+              Sélectionnez un événement économique pour obtenir une analyse IA en temps réel
             </p>
           </div>
         )}
