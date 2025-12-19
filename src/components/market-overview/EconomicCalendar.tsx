@@ -24,61 +24,7 @@ interface EconomicEvent {
   actual: string | null;
 }
 
-// Fallback mock data
-const generateFallbackEvents = (): EconomicEvent[] => {
-  const now = new Date();
-  const events: EconomicEvent[] = [
-    {
-      id: '1',
-      time: addHours(now, 0.5),
-      country: 'États-Unis',
-      countryCode: 'US',
-      currency: 'USD',
-      event: 'Décision taux Fed (FOMC)',
-      impact: 'high' as const,
-      previous: '5.50%',
-      forecast: '5.50%',
-      actual: null,
-    },
-    {
-      id: '2',
-      time: addHours(now, 1),
-      country: 'États-Unis',
-      countryCode: 'US',
-      currency: 'USD',
-      event: 'Conférence de presse Powell',
-      impact: 'high' as const,
-      previous: null,
-      forecast: null,
-      actual: null,
-    },
-    {
-      id: '3',
-      time: addHours(now, 2.5),
-      country: 'Zone Euro',
-      countryCode: 'EU',
-      currency: 'EUR',
-      event: 'PIB (QoQ)',
-      impact: 'medium' as const,
-      previous: '0.3%',
-      forecast: '0.2%',
-      actual: null,
-    },
-    {
-      id: '4',
-      time: addHours(now, 3),
-      country: 'Royaume-Uni',
-      countryCode: 'GB',
-      currency: 'GBP',
-      event: 'IPC (YoY)',
-      impact: 'high' as const,
-      previous: '4.0%',
-      forecast: '3.8%',
-      actual: null,
-    },
-  ];
-  return events.sort((a, b) => a.time.getTime() - b.time.getTime());
-};
+// No fallback mock data - show real data only
 
 const countryNames: Record<string, string> = {
   'US': 'États-Unis',
@@ -93,8 +39,8 @@ const countryNames: Record<string, string> = {
 };
 
 const EconomicCalendar: React.FC = () => {
-  const [events, setEvents] = useState<EconomicEvent[]>(generateFallbackEvents);
-  const [isLoading, setIsLoading] = useState(false);
+  const [events, setEvents] = useState<EconomicEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [highImpactOnly, setHighImpactOnly] = useState(false);
   const [tradingRiskMode, setTradingRiskMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -282,9 +228,19 @@ const EconomicCalendar: React.FC = () => {
 
       <CardContent className="p-0">
         <ScrollArea className="h-[400px]">
-          {isLoading && events.length === 0 ? (
+          {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+              <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                Aucune annonce économique aujourd'hui
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                Les marchés sont calmes - pas d'événements majeurs prévus
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">

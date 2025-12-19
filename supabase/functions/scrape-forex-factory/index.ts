@@ -95,8 +95,8 @@ function parseForexFactoryCalendar(markdown: string): EconomicEvent[] {
   };
 
   // Impact keywords mapping
-  const highImpactKeywords = ['Non-Farm', 'NFP', 'Interest Rate', 'CPI', 'GDP', 'FOMC', 'ECB', 'BOE', 'BOJ', 'Fed'];
-  const mediumImpactKeywords = ['PMI', 'Retail Sales', 'Employment', 'Unemployment', 'Trade Balance', 'Housing'];
+  const highImpactKeywords = ['Non-Farm', 'NFP', 'Interest Rate', 'CPI', 'GDP', 'FOMC', 'ECB', 'BOE', 'BOJ', 'Fed', 'Employment Change', 'Unemployment Rate', 'Retail Sales'];
+  const mediumImpactKeywords = ['PMI', 'Employment', 'Trade Balance', 'Housing', 'Consumer Confidence', 'Manufacturing', 'Services', 'Industrial Production'];
 
   let currentTime = '';
   let currentCurrency = '';
@@ -151,47 +151,7 @@ function parseForexFactoryCalendar(markdown: string): EconomicEvent[] {
     }
   }
 
-  // If no events parsed, create sample events based on common patterns
-  if (events.length === 0) {
-    // Return some default events based on typical ForexFactory calendar
-    const today = new Date();
-    const defaultEvents: EconomicEvent[] = [
-      {
-        id: 'ff-1',
-        time: '8:30am',
-        country: 'US',
-        currency: 'USD',
-        event: 'Core CPI m/m',
-        impact: 'high',
-        previous: '0.3%',
-        forecast: '0.2%',
-        actual: '-',
-      },
-      {
-        id: 'ff-2',
-        time: '10:00am',
-        country: 'US',
-        currency: 'USD',
-        event: 'CB Consumer Confidence',
-        impact: 'medium',
-        previous: '104.7',
-        forecast: '105.5',
-        actual: '-',
-      },
-      {
-        id: 'ff-3',
-        time: '2:00pm',
-        country: 'US',
-        currency: 'USD',
-        event: 'FOMC Meeting Minutes',
-        impact: 'high',
-        previous: '-',
-        forecast: '-',
-        actual: '-',
-      },
-    ];
-    return defaultEvents;
-  }
-
+  // IMPORTANT: Return empty array if no real events found
+  // Do NOT return fallback/mock data - the frontend should handle empty state
   return events.slice(0, 20); // Limit to 20 events
 }
