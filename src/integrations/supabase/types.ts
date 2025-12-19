@@ -344,6 +344,90 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          browser_name: string | null
+          browser_version: string | null
+          city: string | null
+          country: string | null
+          country_code: string | null
+          created_at: string
+          device_model: string | null
+          device_type: string | null
+          device_vendor: string | null
+          id: string
+          ip_address: string | null
+          is_mobile: boolean | null
+          isp: string | null
+          language: string | null
+          os_name: string | null
+          os_version: string | null
+          region: string | null
+          screen_height: number | null
+          screen_width: number | null
+          session_end: string | null
+          session_start: string
+          timezone: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          browser_name?: string | null
+          browser_version?: string | null
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          device_model?: string | null
+          device_type?: string | null
+          device_vendor?: string | null
+          id?: string
+          ip_address?: string | null
+          is_mobile?: boolean | null
+          isp?: string | null
+          language?: string | null
+          os_name?: string | null
+          os_version?: string | null
+          region?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          session_end?: string | null
+          session_start?: string
+          timezone?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          browser_name?: string | null
+          browser_version?: string | null
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          device_model?: string | null
+          device_type?: string | null
+          device_vendor?: string | null
+          id?: string
+          ip_address?: string | null
+          is_mobile?: boolean | null
+          isp?: string | null
+          language?: string | null
+          os_name?: string | null
+          os_version?: string | null
+          region?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          session_end?: string | null
+          session_start?: string
+          timezone?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           animations: boolean | null
