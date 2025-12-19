@@ -19,6 +19,8 @@ export interface Trade {
   notes: string | null;
   emotions: string | null;
   images: string[] | null;
+  videos: string[] | null;
+  audios: string[] | null;
   trade_date: string;
   created_at: string;
   updated_at: string;

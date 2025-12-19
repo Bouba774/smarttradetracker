@@ -320,6 +320,8 @@ const AddTrade: React.FC = () => {
         notes: formData.notes ? sanitizeText(formData.notes) : null,
         emotions: formData.emotion || null,
         images: uploadedMedia.images.length > 0 ? uploadedMedia.images : null,
+        videos: uploadedMedia.videos.length > 0 ? uploadedMedia.videos : null,
+        audios: uploadedMedia.audios.length > 0 ? uploadedMedia.audios : null,
         trade_date: date.toISOString(),
         exit_timestamp: exitTimestamp,
         exit_method: exitTimestamp ? exitMethod : null,
