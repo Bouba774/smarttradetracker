@@ -5,11 +5,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Filter, RefreshCw, Loader2 } from 'lucide-react';
-import { format, addHours, differenceInMinutes, differenceInSeconds } from 'date-fns';
+import { Calendar as CalendarUI } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar, Clock, AlertTriangle, TrendingUp, TrendingDown, Minus, Filter, RefreshCw, Loader2, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
+import { format, addDays, subDays, differenceInMinutes, differenceInSeconds, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface EconomicEvent {
   id: string;
@@ -23,8 +26,6 @@ interface EconomicEvent {
   forecast: string | null;
   actual: string | null;
 }
-
-// No fallback mock data - show real data only
 
 const countryNames: Record<string, string> = {
   'US': 'États-Unis',
@@ -45,11 +46,18 @@ const EconomicCalendar: React.FC = () => {
   const [tradingRiskMode, setTradingRiskMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
-  const fetchForexFactoryData = async () => {
+  const fetchForexFactoryData = async (date: Date) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-forex-factory');
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      console.log('Fetching ForexFactory data for date:', formattedDate);
+      
+      const { data, error } = await supabase.functions.invoke('scrape-forex-factory', {
+        body: { date: formattedDate }
+      });
       
       if (error) {
         console.error('Error fetching ForexFactory data:', error);
@@ -58,24 +66,18 @@ const EconomicCalendar: React.FC = () => {
       }
 
       if (data?.success && data?.events?.length > 0) {
-        const now = new Date();
         const parsedEvents: EconomicEvent[] = data.events.map((event: any, index: number) => {
           // Parse time string to Date
-          let eventTime = now;
+          let eventTime = new Date(date);
           if (event.time && event.time !== 'All Day') {
-            const timeParts = event.time.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+            const timeParts = event.time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
             if (timeParts) {
               let hours = parseInt(timeParts[1]);
               const minutes = parseInt(timeParts[2]);
-              const isPM = timeParts[3].toLowerCase() === 'pm';
+              const isPM = timeParts[3]?.toLowerCase() === 'pm';
               if (isPM && hours !== 12) hours += 12;
               if (!isPM && hours === 12) hours = 0;
-              eventTime = new Date(now);
               eventTime.setHours(hours, minutes, 0, 0);
-              // If time is past, assume it's for tomorrow
-              if (eventTime < now) {
-                eventTime.setDate(eventTime.getDate() + 1);
-              }
             }
           }
 
@@ -96,6 +98,9 @@ const EconomicCalendar: React.FC = () => {
         setEvents(parsedEvents.sort((a, b) => a.time.getTime() - b.time.getTime()));
         setLastUpdate(new Date());
         toast.success('Calendrier économique mis à jour');
+      } else {
+        setEvents([]);
+        setLastUpdate(new Date());
       }
     } catch (error) {
       console.error('Error fetching ForexFactory:', error);
@@ -106,19 +111,34 @@ const EconomicCalendar: React.FC = () => {
   };
 
   useEffect(() => {
-    // Fetch data on mount
-    fetchForexFactoryData();
-    
-    // Refresh every 5 minutes
-    const refreshInterval = setInterval(fetchForexFactoryData, 5 * 60 * 1000);
-    
-    return () => clearInterval(refreshInterval);
-  }, []);
+    fetchForexFactoryData(selectedDate);
+  }, [selectedDate]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handlePreviousDay = () => {
+    setSelectedDate(prev => subDays(prev, 1));
+  };
+
+  const handleNextDay = () => {
+    setSelectedDate(prev => addDays(prev, 1));
+  };
+
+  const handleToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+      setIsCalendarOpen(false);
+    }
+  };
+
+  const isToday = isSameDay(selectedDate, new Date());
 
   const filteredEvents = useMemo(() => {
     return events.filter(event => {
@@ -182,7 +202,7 @@ const EconomicCalendar: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={fetchForexFactoryData}
+              onClick={() => fetchForexFactoryData(selectedDate)}
               disabled={isLoading}
               className="h-8"
             >
@@ -206,8 +226,43 @@ const EconomicCalendar: React.FC = () => {
           </div>
         </div>
 
+        {/* Date Selector */}
+        <div className="flex items-center gap-2 mt-3">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePreviousDay}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex-1 justify-center text-left font-normal h-8 text-sm">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(selectedDate, 'EEEE d MMMM yyyy', { locale: fr })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <CalendarUI
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNextDay}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+
+          {!isToday && (
+            <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={handleToday}>
+              Aujourd'hui
+            </Button>
+          )}
+        </div>
+
         {lastUpdate && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-2">
             Dernière mise à jour: {format(lastUpdate, 'HH:mm', { locale: fr })}
           </p>
         )}
@@ -236,17 +291,17 @@ const EconomicCalendar: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
               <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">
-                Aucune annonce économique aujourd'hui
+                Aucune annonce économique ce jour
               </p>
               <p className="text-xs text-muted-foreground/70 mt-1">
-                Les marchés sont calmes - pas d'événements majeurs prévus
+                Sélectionnez une autre date pour voir les événements
               </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
               {filteredEvents.map((event) => {
-                const isPast = event.time < currentTime;
-                const countdown = getCountdown(event.time);
+                const isPast = event.time < currentTime && isToday;
+                const countdown = isToday ? getCountdown(event.time) : null;
                 const isImminent = countdown && differenceInMinutes(event.time, currentTime) < 15;
                 
                 return (
