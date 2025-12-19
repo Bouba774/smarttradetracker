@@ -64,7 +64,7 @@ const AppSidebar: React.FC = () => {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay - no transition for instant close */}
       {isMobile && isOpen && (
         <div 
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
@@ -75,8 +75,8 @@ const AppSidebar: React.FC = () => {
       <Sidebar 
         className={cn(
           "border-r border-primary/20 bg-sidebar/95 backdrop-blur-xl z-50",
-          isMobile && "fixed inset-y-0 left-0 transition-transform duration-150",
-          isMobile && !isOpen && "-translate-x-full",
+          isMobile && "fixed inset-y-0 left-0",
+          isMobile && !isOpen && "-translate-x-full hidden",
           isMobile && isOpen && "translate-x-0",
           isMobile && "w-[70vw] max-w-[360px]",
           "max-[420px]:w-[78vw]",
