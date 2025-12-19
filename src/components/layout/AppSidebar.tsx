@@ -21,7 +21,6 @@ import {
   FileText,
   GitCompare,
   Brain,
-  Video,
   BookOpen,
   Calculator,
   ArrowRightLeft,
@@ -46,7 +45,7 @@ const AppSidebar: React.FC = () => {
     { path: '/reports', icon: FileText, label: t('reports') },
     { path: '/comparison', icon: GitCompare, label: t('periodComparison') },
     { path: '/psychology', icon: Brain, label: t('psychology') },
-    { path: '/video-journal', icon: Video, label: t('videoJournal') },
+    
     { path: '/journal', icon: BookOpen, label: t('journal') },
     { path: '/calculator', icon: Calculator, label: t('calculator') },
     { path: '/currency-conversion', icon: ArrowRightLeft, label: t('currencyConversion') },
