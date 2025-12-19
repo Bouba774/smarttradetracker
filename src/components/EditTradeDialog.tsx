@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Trade } from '@/hooks/useTrades';
-import { useTradeImages } from '@/hooks/useTradeImages';
+import { useTradeMedia, type MediaType } from '@/hooks/useTradeMedia';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +34,18 @@ import {
 import { toast } from 'sonner';
 import { sanitizeText } from '@/lib/tradeValidation';
 import { DEFAULT_SETUPS, TIMEFRAMES, EMOTIONS } from '@/data/tradeFormOptions';
-import { ImageSection } from '@/components/EditTradeDialog/ImageSection';
+import { MediaSection } from '@/components/EditTradeDialog/MediaSection';
+
+interface ExistingMedia {
+  url: string;
+  type: MediaType;
+}
+
+interface NewMedia {
+  file: File;
+  type: MediaType;
+  preview: string;
+}
 
 interface EditTradeDialogProps {
   trade: Trade | null;
@@ -50,7 +61,7 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
   onSave,
 }) => {
   const { t, language } = useLanguage();
-  const { uploadImages, deleteImage } = useTradeImages();
+  const { uploadMedia, deleteMedia } = useTradeMedia();
   const locale = language === 'fr' ? fr : enUS;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,11 +69,10 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
   const [direction, setDirection] = useState<'long' | 'short'>('long');
   const [exitMethod, setExitMethod] = useState<'sl' | 'tp' | 'manual'>('manual');
   
-  // Image state
-  const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
-  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
-  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  // Media state
+  const [existingMedia, setExistingMedia] = useState<ExistingMedia[]>([]);
+  const [mediaToDelete, setMediaToDelete] = useState<string[]>([]);
+  const [newMediaItems, setNewMediaItems] = useState<NewMedia[]>([]);
   
   const [formData, setFormData] = useState({
     asset: '',
@@ -84,10 +94,22 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
       setDate(parseISO(trade.trade_date));
       setDirection(trade.direction as 'long' | 'short');
       setExitMethod((trade.exit_method as 'sl' | 'tp' | 'manual') || 'manual');
-      setExistingImages(trade.images || []);
-      setImagesToDelete([]);
-      setNewImageFiles([]);
-      setNewImagePreviews([]);
+      
+      // Build existing media list
+      const media: ExistingMedia[] = [];
+      if (trade.images) {
+        trade.images.forEach(url => media.push({ url, type: 'image' }));
+      }
+      if (trade.videos) {
+        trade.videos.forEach(url => media.push({ url, type: 'video' }));
+      }
+      if (trade.audios) {
+        trade.audios.forEach(url => media.push({ url, type: 'audio' }));
+      }
+      setExistingMedia(media);
+      setMediaToDelete([]);
+      setNewMediaItems([]);
+      
       setFormData({
         asset: trade.asset || '',
         setup: trade.setup || '',
@@ -108,28 +130,22 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleNewImageUpload = (newFiles: File[]) => {
-    setNewImageFiles(prev => [...prev, ...newFiles]);
-    newFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewImagePreviews(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleNewMediaUpload = (items: NewMedia[]) => {
+    setNewMediaItems(prev => [...prev, ...items]);
   };
 
-  const removeExistingImage = (imageUrl: string) => {
-    setImagesToDelete(prev => [...prev, imageUrl]);
+  const removeExistingMedia = (url: string) => {
+    setMediaToDelete(prev => [...prev, url]);
   };
 
-  const restoreExistingImage = (imageUrl: string) => {
-    setImagesToDelete(prev => prev.filter(url => url !== imageUrl));
+  const restoreExistingMedia = (url: string) => {
+    setMediaToDelete(prev => prev.filter(u => u !== url));
   };
 
-  const removeNewImage = (index: number) => {
-    setNewImageFiles(prev => prev.filter((_, i) => i !== index));
-    setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+  const removeNewMedia = (index: number) => {
+    const item = newMediaItems[index];
+    URL.revokeObjectURL(item.preview);
+    setNewMediaItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -172,21 +188,34 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
         finalExitPrice = parseFloat(formData.takeProfit);
       }
 
-      // Handle image deletions
-      for (const imageUrl of imagesToDelete) {
-        await deleteImage(imageUrl);
+      // Handle media deletions
+      for (const url of mediaToDelete) {
+        const mediaItem = existingMedia.find(m => m.url === url);
+        if (mediaItem) {
+          await deleteMedia(url, mediaItem.type);
+        }
       }
 
-      // Upload new images
-      let uploadedImageUrls: string[] = [];
-      if (newImageFiles.length > 0) {
-        uploadedImageUrls = await uploadImages(newImageFiles);
+      // Upload new media
+      const newFiles = newMediaItems.map(item => item.file);
+      let uploadedMedia = { images: [] as string[], videos: [] as string[], audios: [] as string[] };
+      if (newFiles.length > 0) {
+        uploadedMedia = await uploadMedia(newFiles);
       }
 
-      // Combine remaining existing images with new uploads
+      // Combine remaining existing media with new uploads
+      const remainingExisting = existingMedia.filter(m => !mediaToDelete.includes(m.url));
       const finalImages = [
-        ...existingImages.filter(url => !imagesToDelete.includes(url)),
-        ...uploadedImageUrls
+        ...remainingExisting.filter(m => m.type === 'image').map(m => m.url),
+        ...uploadedMedia.images
+      ];
+      const finalVideos = [
+        ...remainingExisting.filter(m => m.type === 'video').map(m => m.url),
+        ...uploadedMedia.videos
+      ];
+      const finalAudios = [
+        ...remainingExisting.filter(m => m.type === 'audio').map(m => m.url),
+        ...uploadedMedia.audios
       ];
 
       await onSave(trade.id, {
@@ -206,6 +235,8 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
         exit_method: finalExitPrice ? exitMethod : null,
         timeframe: formData.timeframe || null,
         images: finalImages.length > 0 ? finalImages : null,
+        videos: finalVideos.length > 0 ? finalVideos : null,
+        audios: finalAudios.length > 0 ? finalAudios : null,
       });
 
       toast.success(language === 'fr' ? 'Trade mis à jour' : 'Trade updated');
@@ -435,17 +466,16 @@ const EditTradeDialog: React.FC<EditTradeDialogProps> = ({
             />
           </div>
 
-          {/* Images Section */}
-          <ImageSection
+          {/* Media Section */}
+          <MediaSection
             language={language}
-            existingImages={existingImages}
-            imagesToDelete={imagesToDelete}
-            newImageFiles={newImageFiles}
-            newImagePreviews={newImagePreviews}
-            onNewImageUpload={handleNewImageUpload}
-            onRemoveExistingImage={removeExistingImage}
-            onRestoreExistingImage={restoreExistingImage}
-            onRemoveNewImage={removeNewImage}
+            existingMedia={existingMedia}
+            mediaToDelete={mediaToDelete}
+            newMediaItems={newMediaItems}
+            onNewMediaUpload={handleNewMediaUpload}
+            onRemoveExistingMedia={removeExistingMedia}
+            onRestoreExistingMedia={restoreExistingMedia}
+            onRemoveNewMedia={removeNewMedia}
           />
 
           {/* Submit Button */}

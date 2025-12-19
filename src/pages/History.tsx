@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import EditTradeDialog from '@/components/EditTradeDialog';
 import ConfidentialValue from '@/components/ConfidentialValue';
+import TradeMediaDisplay from '@/components/TradeMediaDisplay';
 
 const History: React.FC = () => {
   const { t, language } = useLanguage();
@@ -494,29 +495,12 @@ const History: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Trade Images */}
-                  {trade.images && trade.images.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mb-2">{language === 'fr' ? 'Captures' : 'Screenshots'} ({trade.images.length})</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {trade.images.map((imageUrl, imgIndex) => (
-                          <a
-                            key={imgIndex}
-                            href={imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="aspect-video rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`Trade capture ${imgIndex + 1}`}
-                              className="w-full h-full object-cover hover:scale-105 transition-transform"
-                            />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Trade Media */}
+                  <TradeMediaDisplay
+                    images={trade.images}
+                    videos={trade.videos}
+                    audios={trade.audios}
+                  />
 
                   {(trade.setup || trade.emotions || trade.notes) && (
                     <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
