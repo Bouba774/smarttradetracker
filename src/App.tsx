@@ -11,6 +11,7 @@ import { SecurityProvider } from "@/contexts/SecurityContext";
 import Layout from "@/components/layout/Layout";
 import { CookieConsent } from "@/components/CookieConsent";
 import LockScreen from "@/components/LockScreen";
+import { useSessionTracking } from "@/hooks/useSessionTracking";
 
 // Critical pages loaded immediately
 import Landing from "./pages/Landing";
@@ -71,6 +72,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Component to conditionally render layout
 const AppContent = () => {
   const { user } = useAuth();
+  
+  // Track user sessions
+  useSessionTracking();
 
   return (
     <>
