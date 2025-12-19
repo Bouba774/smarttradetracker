@@ -23,6 +23,12 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 
+interface UserProfile {
+  user_id: string;
+  nickname: string;
+  avatar_url: string | null;
+}
+
 interface UserSession {
   id: string;
   user_id: string;
@@ -58,7 +64,7 @@ const SessionsAdmin: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
-  const { data: sessions, isLoading, refetch } = useQuery({
+  const { data: sessions, isLoading: isLoadingSessions, refetch } = useQuery({
     queryKey: ['user-sessions'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -70,6 +76,30 @@ const SessionsAdmin: React.FC = () => {
       return data as UserSession[];
     }
   });
+
+  // Fetch all profiles to map user_id to nickname
+  const { data: profiles, isLoading: isLoadingProfiles } = useQuery({
+    queryKey: ['user-profiles-for-sessions'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, nickname, avatar_url');
+      
+      if (error) throw error;
+      return data as UserProfile[];
+    }
+  });
+
+  // Create a map for quick profile lookup
+  const profileMap = useMemo(() => {
+    const map = new Map<string, UserProfile>();
+    profiles?.forEach(profile => {
+      map.set(profile.user_id, profile);
+    });
+    return map;
+  }, [profiles]);
+
+  const isLoading = isLoadingSessions || isLoadingProfiles;
 
   const filteredSessions = useMemo(() => {
     if (!sessions) return [];
@@ -747,6 +777,7 @@ const SessionsAdmin: React.FC = () => {
                     const lastSession = userSessions[0];
                     const uniqueDevices = new Set(userSessions.map(s => s.device_type)).size;
                     const uniqueCountries = new Set(userSessions.map(s => s.country).filter(Boolean)).size;
+                    const profile = profileMap.get(userId);
                     
                     return (
                       <Collapsible key={userId} open={isExpanded} onOpenChange={() => toggleUser(userId)}>
@@ -754,11 +785,21 @@ const SessionsAdmin: React.FC = () => {
                           <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors">
                             <div className="flex items-center gap-3">
                               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                              <div className="p-2 rounded-full bg-primary/10">
-                                <User className="h-4 w-4 text-primary" />
-                              </div>
+                              {profile?.avatar_url ? (
+                                <img 
+                                  src={profile.avatar_url} 
+                                  alt={profile.nickname} 
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="p-2 rounded-full bg-primary/10">
+                                  <User className="h-4 w-4 text-primary" />
+                                </div>
+                              )}
                               <div>
-                                <p className="font-mono text-sm">{userId.slice(0, 8)}...</p>
+                                <p className="font-medium text-sm">
+                                  {profile?.nickname || userId.slice(0, 8) + '...'}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {t.lastActivity}: {format(parseISO(lastSession.session_start), 'dd MMM yyyy HH:mm', { locale: language === 'fr' ? fr : undefined })}
                                 </p>
