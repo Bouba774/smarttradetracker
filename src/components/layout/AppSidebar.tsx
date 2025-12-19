@@ -59,39 +59,29 @@ const AppSidebar: React.FC = () => {
   ];
 
   const handleNavClick = () => {
-    if (isMobile) {
-      // Close immediately without animation delay
-      requestAnimationFrame(() => {
-        toggleSidebar();
-      });
+    if (isMobile && isOpen) {
+      toggleSidebar();
     }
   };
 
   return (
     <>
       {/* Mobile overlay */}
-      {isMobile && (
+      {isMobile && isOpen && (
         <div 
-          className={cn(
-            "fixed inset-0 bg-background/80 backdrop-blur-sm z-40 transition-opacity duration-75",
-            isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-          )}
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
           onClick={toggleSidebar}
         />
       )}
       
       <Sidebar 
         className={cn(
-          "border-r border-primary/20 bg-sidebar/95 backdrop-blur-xl transition-transform duration-100 z-50",
-          // Mobile-specific styles
-          isMobile && "fixed inset-y-0 left-0",
+          "border-r border-primary/20 bg-sidebar/95 backdrop-blur-xl z-50",
+          isMobile && "fixed inset-y-0 left-0 transition-transform duration-150",
           isMobile && !isOpen && "-translate-x-full",
           isMobile && isOpen && "translate-x-0",
-          // Mobile width
           isMobile && "w-[70vw] max-w-[360px]",
-          // Very small screens
           "max-[420px]:w-[78vw]",
-          // Desktop styles
           !isMobile && (isOpen ? "w-64" : "w-16")
         )}
         collapsible="icon"
