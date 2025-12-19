@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Settings2, Bell, Clock, AlertTriangle, Gauge } from 'lucide-react';
+import { 
+  Settings2, 
+  Bell, 
+  Clock, 
+  AlertTriangle, 
+  Gauge,
+  Calendar,
+  Newspaper,
+  TrendingUp,
+  Brain,
+  Grid3X3,
+  ClipboardList,
+  Activity
+} from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 // Import all market overview sections
 import EconomicCalendar from '@/components/market-overview/EconomicCalendar';
@@ -31,8 +44,30 @@ interface SectionPreferences {
   riskOnOff: boolean;
 }
 
+type TabKey = 'calendar' | 'news' | 'sentiment' | 'heatmap' | 'plan' | 'alerts' | 'ai' | 'risk';
+
+interface TabItem {
+  key: TabKey;
+  label: string;
+  icon: React.ElementType;
+  prefKey: keyof SectionPreferences;
+}
+
+const tabs: TabItem[] = [
+  { key: 'calendar', label: 'Calendrier', icon: Calendar, prefKey: 'economicCalendar' },
+  { key: 'news', label: 'News', icon: Newspaper, prefKey: 'news' },
+  { key: 'sentiment', label: 'Sentiment', icon: TrendingUp, prefKey: 'sentiment' },
+  { key: 'heatmap', label: 'Heatmap', icon: Grid3X3, prefKey: 'heatmap' },
+  { key: 'plan', label: 'Plan', icon: ClipboardList, prefKey: 'dayPlan' },
+  { key: 'alerts', label: 'Alertes', icon: Bell, prefKey: 'alerts' },
+  { key: 'ai', label: 'IA', icon: Brain, prefKey: 'aiPrediction' },
+  { key: 'risk', label: 'Risk', icon: Activity, prefKey: 'riskOnOff' },
+];
+
 const MarketOverview: React.FC = () => {
   const { t } = useLanguage();
+  
+  const [activeTab, setActiveTab] = useState<TabKey>('calendar');
   
   const [sectionPrefs, setSectionPrefs] = useState<SectionPreferences>(() => {
     const saved = localStorage.getItem('marketOverviewPrefs');
@@ -77,138 +112,153 @@ const MarketOverview: React.FC = () => {
     setSectionPrefs(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Filter visible tabs based on preferences
+  const visibleTabs = tabs.filter(tab => sectionPrefs[tab.prefKey]);
+
+  const renderActiveContent = () => {
+    switch (activeTab) {
+      case 'calendar':
+        return sectionPrefs.economicCalendar ? <EconomicCalendar /> : null;
+      case 'news':
+        return sectionPrefs.news ? <MarketNews /> : null;
+      case 'sentiment':
+        return sectionPrefs.sentiment ? <MarketSentiment favoriteAssets={favoriteAssets} /> : null;
+      case 'heatmap':
+        return sectionPrefs.heatmap ? <MarketHeatmap /> : null;
+      case 'plan':
+        return sectionPrefs.dayPlan ? <TradingDayPlan tradingStyle={tradingStyle} favoriteAssets={favoriteAssets} /> : null;
+      case 'alerts':
+        return sectionPrefs.alerts ? <SmartAlerts /> : null;
+      case 'ai':
+        return sectionPrefs.aiPrediction ? <AIEconomicPrediction /> : null;
+      case 'risk':
+        return sectionPrefs.riskOnOff ? <RiskOnOffIndicator /> : null;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header with global indicators */}
       <MarketOverviewHeader tradingStyle={tradingStyle} />
 
-      {/* Main Content */}
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        {/* Top Row: Risk-On/Off + Quick Stats */}
-        {sectionPrefs.riskOnOff && (
-          <RiskOnOffIndicator />
-        )}
-
-        {/* Settings Button */}
-        <div className="flex justify-end">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings2 className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('settings') || 'Paramètres'}</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Personnalisation</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
-                <div className="space-y-6">
-                  {/* Trading Style */}
-                  <div className="space-y-3">
-                    <h3 className="font-medium text-sm text-foreground">Style de trading</h3>
-                    <div className="space-y-2">
-                      {['scalping', 'daytrading', 'swing'].map((style) => (
-                        <label
-                          key={style}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                            tradingStyle === style 
-                              ? 'border-primary bg-primary/10' 
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="tradingStyle"
-                            value={style}
-                            checked={tradingStyle === style}
-                            onChange={() => setTradingStyle(style as any)}
-                            className="sr-only"
-                          />
-                          <span className="capitalize">{style === 'daytrading' ? 'Day Trading' : style}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Section Toggles */}
-                  <div className="space-y-3">
-                    <h3 className="font-medium text-sm text-foreground">Sections visibles</h3>
-                    <div className="space-y-3">
-                      {[
-                        { key: 'economicCalendar', label: 'Calendrier économique', icon: Clock },
-                        { key: 'news', label: 'News & Annonces', icon: Bell },
-                        { key: 'sentiment', label: 'Sentiment de marché', icon: Gauge },
-                        { key: 'aiPrediction', label: "Prédictions IA (Premium)", icon: AlertTriangle },
-                        { key: 'heatmap', label: 'Heatmap globale', icon: Settings2 },
-                        { key: 'dayPlan', label: 'Plan du jour', icon: Clock },
-                        { key: 'alerts', label: 'Alertes intelligentes', icon: Bell },
-                        { key: 'riskOnOff', label: 'Risk-On/Risk-Off', icon: AlertTriangle },
-                      ].map(({ key, label, icon: Icon }) => (
-                        <div key={key} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon className="h-4 w-4 text-muted-foreground" />
-                            <Label htmlFor={key} className="text-sm">{label}</Label>
-                          </div>
-                          <Switch
-                            id={key}
-                            checked={sectionPrefs[key as keyof SectionPreferences]}
-                            onCheckedChange={() => toggleSection(key as keyof SectionPreferences)}
-                          />
-                        </div>
-                      ))}
-                    </div>
+      {/* Settings Button - Fixed top right */}
+      <div className="container mx-auto px-3 sm:px-4 py-2 flex justify-end">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('settings') || 'Paramètres'}</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Personnalisation</SheetTitle>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
+              <div className="space-y-6">
+                {/* Trading Style */}
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm text-foreground">Style de trading</h3>
+                  <div className="space-y-2">
+                    {['scalping', 'daytrading', 'swing'].map((style) => (
+                      <label
+                        key={style}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                          tradingStyle === style 
+                            ? 'border-primary bg-primary/10' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="tradingStyle"
+                          value={style}
+                          checked={tradingStyle === style}
+                          onChange={() => setTradingStyle(style as any)}
+                          className="sr-only"
+                        />
+                        <span className="capitalize">{style === 'daytrading' ? 'Day Trading' : style}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-        </div>
 
-        {/* Main Sections Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Left Column */}
-          <div className="space-y-4 sm:space-y-6">
-            {sectionPrefs.economicCalendar && (
-              <EconomicCalendar />
-            )}
-            
-            {sectionPrefs.sentiment && (
-              <MarketSentiment favoriteAssets={favoriteAssets} />
-            )}
-          </div>
+                {/* Section Toggles */}
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm text-foreground">Sections visibles</h3>
+                  <div className="space-y-3">
+                    {[
+                      { key: 'economicCalendar', label: 'Calendrier économique', icon: Clock },
+                      { key: 'news', label: 'News & Annonces', icon: Bell },
+                      { key: 'sentiment', label: 'Sentiment de marché', icon: Gauge },
+                      { key: 'aiPrediction', label: "Prédictions IA (Premium)", icon: AlertTriangle },
+                      { key: 'heatmap', label: 'Heatmap globale', icon: Settings2 },
+                      { key: 'dayPlan', label: 'Plan du jour', icon: Clock },
+                      { key: 'alerts', label: 'Alertes intelligentes', icon: Bell },
+                      { key: 'riskOnOff', label: 'Risk-On/Risk-Off', icon: AlertTriangle },
+                    ].map(({ key, label, icon: Icon }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          <Label htmlFor={key} className="text-sm">{label}</Label>
+                        </div>
+                        <Switch
+                          id={key}
+                          checked={sectionPrefs[key as keyof SectionPreferences]}
+                          onCheckedChange={() => toggleSection(key as keyof SectionPreferences)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-          {/* Right Column */}
-          <div className="space-y-4 sm:space-y-6">
-            {sectionPrefs.news && (
-              <MarketNews />
-            )}
-            
-            {sectionPrefs.dayPlan && (
-              <TradingDayPlan tradingStyle={tradingStyle} favoriteAssets={favoriteAssets} />
-            )}
-            
-            {sectionPrefs.alerts && (
-              <SmartAlerts />
-            )}
-          </div>
-        </div>
-
-        {/* Full Width Sections */}
-        {sectionPrefs.heatmap && (
-          <MarketHeatmap />
-        )}
+      {/* Main Content Area */}
+      <div className="flex-1 container mx-auto px-3 sm:px-4 pb-24 sm:pb-28">
+        {renderActiveContent()}
         
-        {sectionPrefs.aiPrediction && (
-          <AIEconomicPrediction />
-        )}
-
         {/* Disclaimer */}
-        <div className="glass-card p-4 text-center">
+        <div className="glass-card p-4 text-center mt-4">
           <p className="text-xs text-muted-foreground">
             ⚠️ <strong>Avertissement:</strong> Les informations fournies sont à titre informatif uniquement et ne constituent pas des conseils financiers. 
             Le trading comporte des risques importants de perte en capital. Les performances passées ne préjugent pas des performances futures.
           </p>
+        </div>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border safe-area-bottom">
+        <div className="container mx-auto px-2">
+          <div className="flex justify-center py-2">
+            <div className="bg-card rounded-2xl shadow-lg border border-border/50 px-2 py-2 flex items-center gap-1 overflow-x-auto max-w-full scrollbar-hide">
+              {visibleTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.key;
+                
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={cn(
+                      "flex flex-col items-center justify-center min-w-[60px] px-3 py-2 rounded-xl transition-all duration-200",
+                      isActive 
+                        ? "bg-primary text-primary-foreground shadow-md" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Icon className="h-5 w-5 mb-1" />
+                    <span className="text-[10px] font-medium whitespace-nowrap">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>
