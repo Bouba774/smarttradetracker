@@ -33,7 +33,13 @@ import {
   Wallet,
   CheckCircle2,
   XCircle,
+  BarChart3,
+  DollarSign,
+  Activity,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface MTAccount {
   id: string;
@@ -48,6 +54,18 @@ interface MTAccount {
   created_at: string;
 }
 
+interface AccountStats {
+  balance: number;
+  equity: number;
+  margin: number;
+  freeMargin: number;
+  marginLevel: number;
+  profit: number;
+  leverage: number;
+  currency: string;
+  broker: string;
+}
+
 const MetaTraderConnection: React.FC = () => {
   const { language } = useLanguage();
   const { user } = useAuth();
@@ -55,6 +73,9 @@ const MetaTraderConnection: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setSyncing] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<MTAccount[]>([]);
+  const [accountStats, setAccountStats] = useState<Record<string, AccountStats>>({});
+  const [loadingStats, setLoadingStats] = useState<string | null>(null);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
   
   // Form state
   const [platform, setPlatform] = useState<'MT4' | 'MT5'>('MT4');
@@ -93,6 +114,16 @@ const MetaTraderConnection: React.FC = () => {
       error: 'Une erreur est survenue',
       disconnectSuccess: 'Compte déconnecté',
       tradesImported: 'trades importés',
+      balance: 'Balance',
+      equity: 'Équité',
+      margin: 'Marge utilisée',
+      freeMargin: 'Marge libre',
+      profit: 'P&L ouvert',
+      leverage: 'Levier',
+      viewStats: 'Voir les statistiques',
+      hideStats: 'Masquer les statistiques',
+      loadingStats: 'Chargement...',
+      autoSync: 'Sync auto toutes les heures',
     },
     en: {
       connectMT: 'MetaTrader Connection',
@@ -121,6 +152,16 @@ const MetaTraderConnection: React.FC = () => {
       error: 'An error occurred',
       disconnectSuccess: 'Account disconnected',
       tradesImported: 'trades imported',
+      balance: 'Balance',
+      equity: 'Equity',
+      margin: 'Used Margin',
+      freeMargin: 'Free Margin',
+      profit: 'Open P&L',
+      leverage: 'Leverage',
+      viewStats: 'View statistics',
+      hideStats: 'Hide statistics',
+      loadingStats: 'Loading...',
+      autoSync: 'Auto-sync every hour',
     },
   };
 
@@ -241,6 +282,48 @@ const MetaTraderConnection: React.FC = () => {
       dateStyle: 'short',
       timeStyle: 'short',
     });
+  };
+
+  const fetchAccountStats = async (accountId: string) => {
+    if (accountStats[accountId]) {
+      // Already loaded, just toggle
+      setExpandedAccount(expandedAccount === accountId ? null : accountId);
+      return;
+    }
+
+    setLoadingStats(accountId);
+    setExpandedAccount(accountId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('metatrader-connect', {
+        body: { action: 'stats', accountId },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      setAccountStats(prev => ({
+        ...prev,
+        [accountId]: data.stats,
+      }));
+    } catch (error) {
+      console.error('Stats error:', error);
+      toast.error(texts.error);
+    } finally {
+      setLoadingStats(null);
+    }
+  };
+
+  const formatCurrency = (value: number, curr: string) => {
+    return new Intl.NumberFormat(language === 'fr' ? 'fr-FR' : 'en-US', {
+      style: 'currency',
+      currency: curr,
+      minimumFractionDigits: 2,
+    }).format(value);
   };
 
   return (
@@ -389,82 +472,209 @@ const MetaTraderConnection: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Auto-sync info */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+            <RefreshCw className="w-3 h-3" />
+            <span>{texts.autoSync}</span>
+          </div>
+
           {accounts.map((account) => (
-            <Card key={account.id} className="bg-card/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-base">{account.account_name}</CardTitle>
-                    <Badge variant={account.is_connected ? 'default' : 'secondary'} className="text-xs">
-                      {account.platform}
-                    </Badge>
-                  </div>
-                  <Badge 
-                    variant={account.is_connected ? 'default' : 'destructive'} 
-                    className="gap-1"
-                  >
-                    {account.is_connected ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3" />
-                        {texts.connected}
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-3 h-3" />
-                        {texts.disconnected}
-                      </>
-                    )}
-                  </Badge>
-                </div>
-                <CardDescription className="flex items-center gap-4 text-xs">
-                  <span className="flex items-center gap-1">
-                    <Server className="w-3 h-3" />
-                    {account.server}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Wallet className="w-3 h-3" />
-                    {account.initial_balance.toLocaleString()} {account.currency}
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {texts.lastSync}: {formatDate(account.last_sync_at)}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSync(account.id)}
-                      disabled={isSyncing === account.id}
+            <Collapsible 
+              key={account.id} 
+              open={expandedAccount === account.id}
+              onOpenChange={() => fetchAccountStats(account.id)}
+            >
+              <Card className="bg-card/50">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">{account.account_name}</CardTitle>
+                      <Badge variant={account.is_connected ? 'default' : 'secondary'} className="text-xs">
+                        {account.platform}
+                      </Badge>
+                    </div>
+                    <Badge 
+                      variant={account.is_connected ? 'default' : 'destructive'} 
                       className="gap-1"
                     >
-                      {isSyncing === account.id ? (
+                      {account.is_connected ? (
                         <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          {texts.syncing}
+                          <CheckCircle2 className="w-3 h-3" />
+                          {texts.connected}
                         </>
                       ) : (
                         <>
-                          <RefreshCw className="w-3 h-3" />
-                          {texts.sync}
+                          <XCircle className="w-3 h-3" />
+                          {texts.disconnected}
                         </>
                       )}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDisconnect(account.id)}
-                      className="gap-1"
-                    >
-                      <Unlink className="w-3 h-3" />
-                      {texts.disconnect}
-                    </Button>
+                    </Badge>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <CardDescription className="flex items-center gap-4 text-xs">
+                    <span className="flex items-center gap-1">
+                      <Server className="w-3 h-3" />
+                      {account.server}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Wallet className="w-3 h-3" />
+                      {account.initial_balance.toLocaleString()} {account.currency}
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-2 space-y-3">
+                  {/* Stats Toggle */}
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between gap-2 h-8">
+                      <span className="flex items-center gap-2">
+                        <BarChart3 className="w-3 h-3" />
+                        {expandedAccount === account.id ? texts.hideStats : texts.viewStats}
+                      </span>
+                      {loadingStats === account.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : expandedAccount === account.id ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+
+                  {/* Stats Panel */}
+                  <CollapsibleContent>
+                    {loadingStats === account.id ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        <span className="ml-2 text-sm text-muted-foreground">{texts.loadingStats}</span>
+                      </div>
+                    ) : accountStats[account.id] ? (
+                      <div className="grid grid-cols-2 gap-3 p-3 bg-muted/30 rounded-lg">
+                        {/* Balance */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <DollarSign className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.balance}</p>
+                            <p className="font-semibold text-sm">
+                              {formatCurrency(accountStats[account.id].balance, accountStats[account.id].currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Equity */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <Activity className="w-4 h-4 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.equity}</p>
+                            <p className="font-semibold text-sm">
+                              {formatCurrency(accountStats[account.id].equity, accountStats[account.id].currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Margin */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-orange-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.margin}</p>
+                            <p className="font-semibold text-sm">
+                              {formatCurrency(accountStats[account.id].margin, accountStats[account.id].currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Free Margin */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center">
+                            <Wallet className="w-4 h-4 text-green-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.freeMargin}</p>
+                            <p className="font-semibold text-sm">
+                              {formatCurrency(accountStats[account.id].freeMargin, accountStats[account.id].currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Open P&L */}
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            accountStats[account.id].profit >= 0 ? 'bg-profit/10' : 'bg-loss/10'
+                          }`}>
+                            <TrendingUp className={`w-4 h-4 ${
+                              accountStats[account.id].profit >= 0 ? 'text-profit' : 'text-loss'
+                            }`} />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.profit}</p>
+                            <p className={`font-semibold text-sm ${
+                              accountStats[account.id].profit >= 0 ? 'text-profit' : 'text-loss'
+                            }`}>
+                              {accountStats[account.id].profit >= 0 ? '+' : ''}
+                              {formatCurrency(accountStats[account.id].profit, accountStats[account.id].currency)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Leverage */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
+                            <BarChart3 className="w-4 h-4 text-purple-500" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">{texts.leverage}</p>
+                            <p className="font-semibold text-sm">
+                              1:{accountStats[account.id].leverage}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </CollapsibleContent>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {texts.lastSync}: {formatDate(account.last_sync_at)}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSync(account.id)}
+                        disabled={isSyncing === account.id}
+                        className="gap-1"
+                      >
+                        {isSyncing === account.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {texts.syncing}
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3 h-3" />
+                            {texts.sync}
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDisconnect(account.id)}
+                        className="gap-1"
+                      >
+                        <Unlink className="w-3 h-3" />
+                        {texts.disconnect}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Collapsible>
           ))}
         </div>
       )}
