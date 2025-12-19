@@ -30,7 +30,6 @@ import {
   Settings,
   Info,
   X,
-  Globe,
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
 
@@ -41,7 +40,6 @@ const AppSidebar: React.FC = () => {
   const isOpen = state === 'expanded';
 
   const navItems = [
-    { path: '/market-overview', icon: Globe, label: t('marketOverview') || 'Market Overview' },
     { path: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
     { path: '/add-trade', icon: PlusCircle, label: t('addTrade') },
     { path: '/history', icon: History, label: t('history') },
