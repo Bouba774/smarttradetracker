@@ -1118,20 +1118,20 @@ export type Database = {
           wipe_on_max_attempts: boolean | null
         }
         Insert: {
-          biometric_enabled?: never
+          biometric_enabled?: boolean | null
           has_pin?: never
-          max_attempts?: never
-          pin_length?: never
+          max_attempts?: number | null
+          pin_length?: number | null
           user_id?: string | null
-          wipe_on_max_attempts?: never
+          wipe_on_max_attempts?: boolean | null
         }
         Update: {
-          biometric_enabled?: never
+          biometric_enabled?: boolean | null
           has_pin?: never
-          max_attempts?: never
-          pin_length?: never
+          max_attempts?: number | null
+          pin_length?: number | null
           user_id?: string | null
-          wipe_on_max_attempts?: never
+          wipe_on_max_attempts?: boolean | null
         }
         Relationships: []
       }
