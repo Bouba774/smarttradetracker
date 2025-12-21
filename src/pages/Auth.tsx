@@ -14,16 +14,18 @@ import { createPasswordSchema, validatePassword } from '@/lib/passwordValidation
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import TurnstileWidget from '@/components/TurnstileWidget';
 import { useConnectionSecurity } from '@/hooks/useConnectionSecurity';
+import { useEmailValidation } from '@/hooks/useEmailValidation';
 
 // Cloudflare Turnstile Site Key (public key, safe to expose in client code)
 const TURNSTILE_SITE_KEY = '0x4AAAAAACG-_s2EZYR5V8_J';
 
 const Auth: React.FC = () => {
-const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
   const { language, t } = useLanguage();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const { checkConnection } = useConnectionSecurity();
+  const { validateEmail: validateEmailAddress, isValidating: isValidatingEmail } = useEmailValidation();
   
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -226,6 +228,16 @@ if (error) {
           navigate('/dashboard');
         }
       } else {
+        // Validate email before signup (disposable email detection)
+        const emailValidation = await validateEmailAddress(email, false);
+        if (!emailValidation.valid) {
+          toast.error(emailValidation.message || (language === 'fr'
+            ? 'Veuillez utiliser une adresse email personnelle ou professionnelle valide.'
+            : 'Please use a valid personal or professional email address.'));
+          setIsSubmitting(false);
+          return;
+        }
+
         // Add artificial delay to prevent timing attacks
         const startTime = Date.now();
         const { error } = await signUp(email, password, nickname);

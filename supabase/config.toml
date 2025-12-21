@@ -53,3 +53,6 @@ verify_jwt = true
 
 [functions.vpn-detection]
 verify_jwt = true
+
+[functions.validate-email]
+verify_jwt = false
