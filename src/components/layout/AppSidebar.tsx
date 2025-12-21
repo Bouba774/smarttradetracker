@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
+import { useAdmin } from '@/contexts/AdminContext';
 import { cn } from '@/lib/utils';
 import {
   Sidebar,
@@ -33,13 +34,17 @@ import {
   Activity,
   ShieldCheck,
   Crown,
+  Shield,
 } from 'lucide-react';
 import { APP_VERSION } from '@/lib/version';
+import { Button } from '@/components/ui/button';
 
 const AppSidebar: React.FC = () => {
   const { t, language } = useLanguage();
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAdmin } = useAdminRole();
+  const { isAdminVerified, isInAdminMode } = useAdmin();
   const { state, openMobile, setOpenMobile, isMobile } = useSidebar();
   const isOpen = isMobile ? openMobile : state === 'expanded';
 
@@ -60,6 +65,18 @@ const AppSidebar: React.FC = () => {
     { path: '/settings', icon: Settings, label: t('settings'), adminOnly: false },
     { path: '/about', icon: Info, label: t('about'), adminOnly: false },
   ];
+
+  const handleEnterAdminMode = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    // Si déjà vérifié, aller directement à l'admin dashboard, sinon aller à la vérification
+    if (isAdminVerified) {
+      navigate('/app/admin/dashboard');
+    } else {
+      navigate('/admin-verify');
+    }
+  };
 
   // Filter nav items based on admin status
   const visibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
@@ -182,7 +199,22 @@ const AppSidebar: React.FC = () => {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="p-3 sm:p-4 border-t border-primary/20">
+        <SidebarFooter className="p-3 sm:p-4 border-t border-primary/20 space-y-3">
+          {/* Bouton Mode Admin - visible uniquement pour les admins */}
+          {isAdmin && (
+            <Button
+              onClick={handleEnterAdminMode}
+              variant="outline"
+              className={cn(
+                "w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive",
+                isInAdminMode && "bg-destructive/20 border-destructive"
+              )}
+            >
+              <Shield className="w-4 h-4" />
+              {language === 'fr' ? 'Mode Admin' : 'Admin Mode'}
+            </Button>
+          )}
+          
           <div className="text-center">
             <p className="text-[10px] text-muted-foreground">
               Smart Trade Tracker V{APP_VERSION}
