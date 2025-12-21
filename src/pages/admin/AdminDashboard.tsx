@@ -60,23 +60,7 @@ const AdminDashboard: React.FC = () => {
   const stats = useAdvancedStats(trades);
   const { formatAmount } = useCurrency();
 
-  if (!selectedUser) {
-    return <AdminPagePlaceholder pageName="tableau de bord" />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // User profile info
-  const userNickname = profile?.nickname || selectedUser.nickname || 'Trader';
-  const userLevel = profile?.level || 1;
-
-  // Generate equity curve data from trades
+  // Generate equity curve data from trades - MUST be before any conditional returns
   const equityData = React.useMemo(() => {
     if (trades.length === 0) {
       return [
@@ -100,7 +84,7 @@ const AdminDashboard: React.FC = () => {
     });
   }, [trades]);
 
-  // Generate monthly data
+  // Generate monthly data - MUST be before any conditional returns
   const monthlyData = React.useMemo(() => {
     if (trades.length === 0) {
       return [
@@ -121,6 +105,23 @@ const AdminDashboard: React.FC = () => {
     });
     return Object.entries(months).map(([month, data]) => ({ month, ...data }));
   }, [trades]);
+
+  // Early returns AFTER all hooks
+  if (!selectedUser) {
+    return <AdminPagePlaceholder pageName="tableau de bord" />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // User profile info
+  const userNickname = profile?.nickname || selectedUser.nickname || 'Trader';
+  const userLevel = profile?.level || 1;
 
   // Position distribution data
   const positionData = [
