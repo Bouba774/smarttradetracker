@@ -589,9 +589,7 @@ export type Database = {
           known_devices: Json | null
           max_attempts: number | null
           pin_enabled: boolean | null
-          pin_hash: string | null
           pin_length: number | null
-          pin_salt: string | null
           sounds: boolean | null
           updated_at: string
           user_id: string
@@ -611,9 +609,7 @@ export type Database = {
           known_devices?: Json | null
           max_attempts?: number | null
           pin_enabled?: boolean | null
-          pin_hash?: string | null
           pin_length?: number | null
-          pin_salt?: string | null
           sounds?: boolean | null
           updated_at?: string
           user_id: string
@@ -633,9 +629,7 @@ export type Database = {
           known_devices?: Json | null
           max_attempts?: number | null
           pin_enabled?: boolean | null
-          pin_hash?: string | null
           pin_length?: number | null
-          pin_salt?: string | null
           sounds?: boolean | null
           updated_at?: string
           user_id?: string
@@ -660,6 +654,7 @@ export type Database = {
         Returns: Json
       }
       count_admin_failures: { Args: { p_admin_id: string }; Returns: number }
+      delete_admin_secret: { Args: { p_admin_id: string }; Returns: boolean }
       get_user_pin_status: { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
@@ -684,6 +679,10 @@ export type Database = {
       reset_rate_limit: {
         Args: { p_attempt_type?: string; p_identifier: string }
         Returns: undefined
+      }
+      set_admin_secret: {
+        Args: { p_admin_id: string; p_secret: string }
+        Returns: boolean
       }
       verify_admin_secret: {
         Args: { p_admin_id: string; p_secret: string }
