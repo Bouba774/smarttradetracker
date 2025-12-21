@@ -40,6 +40,7 @@ const About = lazy(() => import("./pages/About"));
 const PrivacyCenter = lazy(() => import("./pages/PrivacyCenter"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ResetPin = lazy(() => import("./pages/ResetPin"));
+const Help = lazy(() => import("./pages/Help"));
 const AIChatBot = lazy(() => import("@/components/AIChatBot"));
 const ChangelogModal = lazy(() => import("@/components/ChangelogModal"));
 
@@ -118,6 +119,7 @@ const AppContent = () => {
           {/* Public pages without authentication */}
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-use" element={<TermsOfUse />} />
+          <Route path="/aide" element={<ProtectedRoute><Help /></ProtectedRoute>} />
           <Route path="/about" element={<About />} />
           
           {/* Admin verification page */}

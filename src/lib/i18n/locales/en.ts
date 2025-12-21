@@ -804,4 +804,15 @@ export const en = {
   landingNavFeatures: 'Features',
   landingNavBenefits: 'Benefits',
   landingNavTrust: 'Trust',
+  
+  // Help Page
+  help: 'Help',
+  helpTitle: 'Help',
+  searchHelp: 'Search for a question...',
+  noResultsFound: 'No results found',
+  noArticles: 'No articles available',
+  answerCopied: 'Answer copied',
+  copyFailed: 'Copy failed',
+  copyAnswer: 'Copy answer',
+  copied: 'Copied',
 };

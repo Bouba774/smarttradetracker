@@ -804,4 +804,15 @@ export const fr = {
   landingNavFeatures: 'Fonctionnalités',
   landingNavBenefits: 'Avantages',
   landingNavTrust: 'Confiance',
+  
+  // Help Page
+  help: 'Aide',
+  helpTitle: 'Aide',
+  searchHelp: 'Rechercher une question...',
+  noResultsFound: 'Aucun résultat trouvé',
+  noArticles: 'Aucun article disponible',
+  answerCopied: 'Réponse copiée',
+  copyFailed: 'Échec de la copie',
+  copyAnswer: 'Copier la réponse',
+  copied: 'Copié',
 };
