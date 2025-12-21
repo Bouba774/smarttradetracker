@@ -38,9 +38,9 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Get authorization header
+    // Get authorization header and extract token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('No authorization header provided');
@@ -50,13 +50,14 @@ serve(async (req) => {
       );
     }
 
-    // Create Supabase client with user's token
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
+    // Create admin client for operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user from token
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
       console.error('User error:', userError);
       return new Response(
