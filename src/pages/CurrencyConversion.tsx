@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,11 @@ import {
   TrendingUp,
   TrendingDown,
   Wifi,
-  WifiOff
+  WifiOff,
+  GripVertical,
+  History,
+  Trash2,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +33,15 @@ interface Asset {
   decimals: number;
   type: 'fiat' | 'crypto';
   flag?: string;
+}
+
+interface ConversionHistoryItem {
+  id: string;
+  fromCode: string;
+  toCode: string;
+  fromAmount: number;
+  toAmount: number;
+  timestamp: number;
 }
 
 // Fiat currencies with flag emojis
@@ -105,6 +118,8 @@ const ALL_ASSETS: Asset[] = [...FIAT_CURRENCIES, ...CRYPTOCURRENCIES];
 
 const CACHE_KEY = 'crypto-fiat-rates-cache-v2';
 const CACHE_DURATION = 5 * 60 * 1000;
+const HISTORY_KEY = 'currency-conversion-history-v2';
+const SLOTS_KEY = 'currency-conversion-slots';
 
 interface ConversionSlot {
   id: number;
@@ -117,18 +132,54 @@ const CurrencyConversion: React.FC = () => {
   const navigate = useNavigate();
   
   const [baseAmount, setBaseAmount] = useState<string>('100');
-  const [slots, setSlots] = useState<ConversionSlot[]>([
-    { id: 1, assetCode: 'USD', isEditing: true },
-    { id: 2, assetCode: 'XAF', isEditing: false },
-    { id: 3, assetCode: 'EUR', isEditing: false },
-    { id: 4, assetCode: 'BTC', isEditing: false },
-  ]);
+  const [slots, setSlots] = useState<ConversionSlot[]>(() => {
+    const saved = localStorage.getItem(SLOTS_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // fallback
+      }
+    }
+    return [
+      { id: 1, assetCode: 'USD', isEditing: true },
+      { id: 2, assetCode: 'XAF', isEditing: false },
+      { id: 3, assetCode: 'EUR', isEditing: false },
+      { id: 4, assetCode: 'BTC', isEditing: false },
+    ];
+  });
   const [rates, setRates] = useState<Record<string, number>>({});
   const [priceChanges, setPriceChanges] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [editingSlotId, setEditingSlotId] = useState<number | null>(1);
+  const [history, setHistory] = useState<ConversionHistoryItem[]>(() => {
+    const saved = localStorage.getItem(HISTORY_KEY);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [showHistory, setShowHistory] = useState(false);
+  
+  // Drag and drop state
+  const [draggedSlotId, setDraggedSlotId] = useState<number | null>(null);
+  const [dragOverSlotId, setDragOverSlotId] = useState<number | null>(null);
+
+  // Save slots to localStorage
+  useEffect(() => {
+    localStorage.setItem(SLOTS_KEY, JSON.stringify(slots));
+  }, [slots]);
+
+  // Save history to localStorage
+  useEffect(() => {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }, [history]);
 
   // Handle online/offline status
   useEffect(() => {
@@ -267,25 +318,14 @@ const CurrencyConversion: React.FC = () => {
   const convertAmount = useCallback((amount: number, fromCode: string, toCode: string): number => {
     if (!rates[fromCode] || !rates[toCode]) return 0;
     
-    const fromAsset = getAsset(fromCode);
-    const toAsset = getAsset(toCode);
-    
     let amountInUsd: number;
-    if (fromAsset?.type === 'crypto') {
-      amountInUsd = amount / rates[fromCode];
-    } else {
-      amountInUsd = amount / rates[fromCode];
-    }
+    amountInUsd = amount / rates[fromCode];
     
     let result: number;
-    if (toAsset?.type === 'crypto') {
-      result = amountInUsd * rates[toCode];
-    } else {
-      result = amountInUsd * rates[toCode];
-    }
+    result = amountInUsd * rates[toCode];
     
     return result;
-  }, [rates, getAsset]);
+  }, [rates]);
 
   // Format number with proper decimals and spacing
   const formatNumber = useCallback((num: number, decimals: number = 4): string => {
@@ -334,16 +374,118 @@ const CurrencyConversion: React.FC = () => {
     return convertAmount(amount, baseSlot.assetCode, slot.assetCode);
   }, [slots, baseAmount, editingSlotId, baseSlot, convertAmount]);
 
+  // Add to history
+  const addToHistory = useCallback((fromCode: string, toCode: string, fromAmount: number, toAmount: number) => {
+    const newItem: ConversionHistoryItem = {
+      id: Date.now().toString(),
+      fromCode,
+      toCode,
+      fromAmount,
+      toAmount,
+      timestamp: Date.now(),
+    };
+    setHistory(prev => [newItem, ...prev.slice(0, 19)]); // Keep last 20
+  }, []);
+
   // Handle slot click to edit
   const handleSlotClick = useCallback((slotId: number) => {
     const slot = slots.find(s => s.id === slotId);
     if (!slot) return;
     
+    // Save current conversion to history
+    if (baseSlot && editingSlotId) {
+      const fromAmount = parseFloat(baseAmount) || 0;
+      const toAmount = getConvertedValue(slotId);
+      if (fromAmount > 0 && baseSlot.assetCode !== slot.assetCode) {
+        addToHistory(baseSlot.assetCode, slot.assetCode, fromAmount, toAmount);
+      }
+    }
+    
     // Calculate the new base amount based on current conversion
     const currentValue = getConvertedValue(slotId);
     setBaseAmount(currentValue.toString());
     setEditingSlotId(slotId);
-  }, [slots, getConvertedValue]);
+  }, [slots, getConvertedValue, baseSlot, editingSlotId, baseAmount, addToHistory]);
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, slotId: number) => {
+    setDraggedSlotId(slotId);
+    e.dataTransfer.effectAllowed = 'move';
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, slotId: number) => {
+    e.preventDefault();
+    if (draggedSlotId !== slotId) {
+      setDragOverSlotId(slotId);
+    }
+  }, [draggedSlotId]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOverSlotId(null);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetSlotId: number) => {
+    e.preventDefault();
+    
+    if (draggedSlotId === null || draggedSlotId === targetSlotId) {
+      setDraggedSlotId(null);
+      setDragOverSlotId(null);
+      return;
+    }
+    
+    setSlots(prev => {
+      const newSlots = [...prev];
+      const draggedIndex = newSlots.findIndex(s => s.id === draggedSlotId);
+      const targetIndex = newSlots.findIndex(s => s.id === targetSlotId);
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        const [draggedItem] = newSlots.splice(draggedIndex, 1);
+        newSlots.splice(targetIndex, 0, draggedItem);
+      }
+      
+      return newSlots;
+    });
+    
+    setDraggedSlotId(null);
+    setDragOverSlotId(null);
+  }, [draggedSlotId]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedSlotId(null);
+    setDragOverSlotId(null);
+  }, []);
+
+  // Clear history
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+  }, []);
+
+  // Apply history item
+  const applyHistoryItem = useCallback((item: ConversionHistoryItem) => {
+    // Update first two slots with the conversion pair
+    setSlots(prev => {
+      const newSlots = [...prev];
+      if (newSlots[0]) newSlots[0] = { ...newSlots[0], assetCode: item.fromCode };
+      if (newSlots[1]) newSlots[1] = { ...newSlots[1], assetCode: item.toCode };
+      return newSlots;
+    });
+    setBaseAmount(item.fromAmount.toString());
+    setEditingSlotId(slots[0]?.id || 1);
+    setShowHistory(false);
+  }, [slots]);
+
+  // Format relative time
+  const formatRelativeTime = useCallback((timestamp: number): string => {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return language === 'fr' ? "À l'instant" : 'Just now';
+    if (minutes < 60) return language === 'fr' ? `Il y a ${minutes}min` : `${minutes}min ago`;
+    if (hours < 24) return language === 'fr' ? `Il y a ${hours}h` : `${hours}h ago`;
+    return language === 'fr' ? `Il y a ${days}j` : `${days}d ago`;
+  }, [language]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -363,12 +505,20 @@ const CurrencyConversion: React.FC = () => {
             {language === 'fr' ? 'Convertisseur de devises' : 'Currency Converter'}
           </h1>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {isOnline ? (
-              <Wifi className="w-5 h-5 text-profit" />
+              <Wifi className="w-4 h-4 text-profit" />
             ) : (
-              <WifiOff className="w-5 h-5 text-loss" />
+              <WifiOff className="w-4 h-4 text-loss" />
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowHistory(!showHistory)}
+              className={cn("text-foreground", showHistory && "bg-primary/10")}
+            >
+              <History className="w-5 h-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -382,26 +532,99 @@ const CurrencyConversion: React.FC = () => {
         </div>
       </div>
 
+      {/* History Panel */}
+      {showHistory && (
+        <div className="px-4 py-3 bg-secondary/30 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              {language === 'fr' ? 'Historique récent' : 'Recent History'}
+            </span>
+            {history.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearHistory}
+                className="text-xs text-muted-foreground hover:text-loss"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                {language === 'fr' ? 'Effacer' : 'Clear'}
+              </Button>
+            )}
+          </div>
+          
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              {language === 'fr' ? 'Aucune conversion récente' : 'No recent conversions'}
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {history.slice(0, 5).map((item) => {
+                const fromAsset = getAsset(item.fromCode);
+                const toAsset = getAsset(item.toCode);
+                
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => applyHistoryItem(item)}
+                    className="flex items-center justify-between p-2 rounded-lg bg-background/50 hover:bg-background cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>{fromAsset?.flag}</span>
+                      <span className="font-medium">{formatNumber(item.fromAmount, 2)} {item.fromCode}</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      <span>{toAsset?.flag}</span>
+                      <span className="font-medium">{formatNumber(item.toAmount, 2)} {item.toCode}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeTime(item.timestamp)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Conversion List */}
       <div className="px-2 py-4">
         <div className="divide-y divide-border/50">
-          {slots.map((slot) => {
+          {slots.map((slot, index) => {
             const asset = getAsset(slot.assetCode);
             const isEditing = slot.id === editingSlotId;
             const value = isEditing ? parseFloat(baseAmount) || 0 : getConvertedValue(slot.id);
             const priceChange = priceChanges[slot.assetCode];
+            const isDragging = draggedSlotId === slot.id;
+            const isDragOver = dragOverSlotId === slot.id;
             
             return (
               <div
                 key={slot.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, slot.id)}
+                onDragOver={(e) => handleDragOver(e, slot.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, slot.id)}
+                onDragEnd={handleDragEnd}
                 className={cn(
-                  "flex items-center justify-between py-5 px-3 cursor-pointer transition-colors",
-                  isEditing && "bg-primary/5"
+                  "flex items-center justify-between py-5 px-3 cursor-pointer transition-all",
+                  isEditing && "bg-primary/5",
+                  isDragging && "opacity-50 scale-95",
+                  isDragOver && "bg-primary/10 border-t-2 border-primary"
                 )}
                 onClick={() => !isEditing && handleSlotClick(slot.id)}
               >
+                {/* Drag handle */}
+                <div 
+                  className="cursor-grab active:cursor-grabbing mr-2 text-muted-foreground hover:text-foreground touch-none"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripVertical className="w-5 h-5" />
+                </div>
+                
                 {/* Left: Flag/Icon + Code */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-1">
                   <div className="text-3xl">
                     {asset?.flag || '💱'}
                   </div>
@@ -410,7 +633,10 @@ const CurrencyConversion: React.FC = () => {
                     value={slot.assetCode}
                     onValueChange={(v) => updateSlotAsset(slot.id, v)}
                   >
-                    <SelectTrigger className="w-auto border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0">
+                    <SelectTrigger 
+                      className="w-auto border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <SelectValue>
                         <div className="flex items-center gap-1">
                           <span className="text-lg font-semibold text-foreground">
@@ -463,7 +689,7 @@ const CurrencyConversion: React.FC = () => {
                         const val = e.target.value.replace(/[^0-9.,]/g, '');
                         setBaseAmount(val);
                       }}
-                      className="text-right text-2xl font-semibold h-10 w-40 bg-transparent border-0 border-b-2 border-primary rounded-none shadow-none focus-visible:ring-0 px-0"
+                      className="text-right text-2xl font-semibold h-10 w-36 bg-transparent border-0 border-b-2 border-primary rounded-none shadow-none focus-visible:ring-0 px-0"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />
