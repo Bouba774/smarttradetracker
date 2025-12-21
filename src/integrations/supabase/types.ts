@@ -296,6 +296,57 @@ export type Database = {
         }
         Relationships: []
       }
+      email_validation_logs: {
+        Row: {
+          created_at: string
+          domain: string
+          domain_age_days: number | null
+          email_hash: string
+          has_mx_record: boolean | null
+          id: string
+          ip_address: string | null
+          is_disposable: boolean | null
+          is_free_provider: boolean | null
+          rejection_reason: string | null
+          risk_factors: Json | null
+          status: string
+          user_agent: string | null
+          validation_score: number
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          domain_age_days?: number | null
+          email_hash: string
+          has_mx_record?: boolean | null
+          id?: string
+          ip_address?: string | null
+          is_disposable?: boolean | null
+          is_free_provider?: boolean | null
+          rejection_reason?: string | null
+          risk_factors?: Json | null
+          status: string
+          user_agent?: string | null
+          validation_score?: number
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          domain_age_days?: number | null
+          email_hash?: string
+          has_mx_record?: boolean | null
+          id?: string
+          ip_address?: string | null
+          is_disposable?: boolean | null
+          is_free_provider?: boolean | null
+          rejection_reason?: string | null
+          risk_factors?: Json | null
+          status?: string
+          user_agent?: string | null
+          validation_score?: number
+        }
+        Relationships: []
+      }
       gdpr_requests: {
         Row: {
           created_at: string
