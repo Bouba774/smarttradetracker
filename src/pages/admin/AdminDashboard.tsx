@@ -422,10 +422,10 @@ const AdminDashboard: React.FC = () => {
 
       {/* Gauge Charts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <GaugeChart title={t('winrate')} value={stats.winrate} maxValue={100} unit="%" variant={stats.winrate >= 50 ? 'profit' : 'loss'} />
-        <GaugeChart title={t('profitFactorLabel')} value={stats.profitFactor} maxValue={4} variant={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} />
-        <GaugeChart title={t('maxDrawdown')} value={stats.maxDrawdownPercent} maxValue={100} unit="%" variant={stats.maxDrawdownPercent <= 20 ? 'profit' : 'loss'} />
-        <GaugeChart title={t('riskReward')} value={stats.avgRiskReward} maxValue={4} variant={stats.avgRiskReward >= 1 ? 'profit' : 'loss'} />
+        <GaugeChart label={t('winrate')} value={stats.winrate} max={100} displayValue={`${stats.winrate.toFixed(1)}%`} variant={stats.winrate >= 50 ? 'profit' : 'loss'} />
+        <GaugeChart label={t('profitFactorLabel')} value={stats.profitFactor} max={4} displayValue={stats.profitFactorDisplay} variant={stats.profitFactor >= 1.5 ? 'profit' : 'loss'} />
+        <GaugeChart label={t('maxDrawdown')} value={stats.maxDrawdownPercent} max={100} displayValue={`${stats.maxDrawdownPercent.toFixed(1)}%`} variant={stats.maxDrawdownPercent <= 20 ? 'profit' : 'loss'} />
+        <GaugeChart label={t('riskReward')} value={stats.avgRiskReward} max={4} displayValue={stats.avgRiskRewardDisplay} variant={stats.avgRiskReward >= 1 ? 'profit' : 'loss'} />
       </div>
     </div>
   );

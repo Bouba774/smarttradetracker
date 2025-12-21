@@ -434,8 +434,8 @@ const AdminReports: React.FC = () => {
                         <td className={cn("py-2 px-2 text-center", strat.profitFactor >= 1 ? "text-profit" : "text-loss")}>
                           {strat.profitFactor.toFixed(2)}
                         </td>
-                        <td className={cn("py-2 px-2 text-right font-medium", strat.pnl >= 0 ? "text-profit" : "text-loss")}>
-                          <ConfidentialValue>{formatAmount(strat.pnl, true)}</ConfidentialValue>
+                        <td className={cn("py-2 px-2 text-right font-medium", strat.totalPnl >= 0 ? "text-profit" : "text-loss")}>
+                          <ConfidentialValue>{formatAmount(strat.totalPnl, true)}</ConfidentialValue>
                         </td>
                       </tr>
                     ))}
@@ -481,29 +481,31 @@ const AdminReports: React.FC = () => {
           {/* Gauge Charts */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <GaugeChart
-              title={t('winrate')}
+              label={t('winrate')}
               value={stats.winrate}
-              maxValue={100}
-              unit="%"
+              max={100}
+              displayValue={`${stats.winrate}%`}
               variant={stats.winrate >= 50 ? 'profit' : 'loss'}
             />
             <GaugeChart
-              title={t('discipline')}
+              label={t('discipline')}
               value={disciplineScore.overallScore}
-              maxValue={100}
+              max={100}
+              displayValue={`${disciplineScore.overallScore}`}
               variant={disciplineScore.overallScore >= 70 ? 'profit' : 'loss'}
             />
             <GaugeChart
-              title={language === 'fr' ? 'Trades période' : 'Period trades'}
+              label={language === 'fr' ? 'Trades période' : 'Period trades'}
               value={stats.totalTrades}
-              maxValue={50}
-              variant="neutral"
+              max={50}
+              displayValue={`${stats.totalTrades}`}
+              variant="primary"
             />
             <GaugeChart
-              title={t('bestSetup')}
+              label={t('bestSetup')}
               value={strategyAnalysis.strategies.length > 0 ? strategyAnalysis.strategies[0]?.winRate || 0 : 0}
-              maxValue={100}
-              unit="%"
+              max={100}
+              displayValue={`${strategyAnalysis.strategies.length > 0 ? strategyAnalysis.strategies[0]?.winRate || 0 : 0}%`}
               variant="profit"
             />
           </div>
