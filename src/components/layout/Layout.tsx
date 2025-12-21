@@ -3,6 +3,7 @@ import Header from './Header';
 import AppSidebar from './AppSidebar';
 import Footer from './Footer';
 import AdBanner from '@/components/AdBanner';
+import HelpButton from '@/components/HelpButton';
 import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
@@ -38,6 +39,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           
           {/* Ad Banner at bottom - hidden on auth page */}
           {!isAuthPage && <AdBanner />}
+          
+          {/* Help Button - floating on all pages */}
+          <HelpButton />
         </SidebarInset>
       </div>
     </SidebarProvider>
