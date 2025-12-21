@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const getAllowedOrigin = (origin: string): string => {
   const allowedOrigins = [
     'https://sfdudueswogeusuofbbi.lovableproject.com',
+    'https://smarttradetrackerstt.lovable.app',
     'https://smarttradetracker.app',
     'https://www.smarttradetracker.app',
     'http://localhost:5173',
