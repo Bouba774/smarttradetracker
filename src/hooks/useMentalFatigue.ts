@@ -36,21 +36,36 @@ export const useMentalFatigue = (trades: Trade[], language: string = 'fr'): Ment
       const firstTrade = Math.min(...tradeTimes.map(d => d.getTime()));
       const lastTrade = Math.max(...tradeTimes.map(d => d.getTime()));
       const hoursTrading = differenceInHours(new Date(lastTrade), new Date(firstTrade));
-
+      
+      // Also calculate minutes for more precise display
+      const minutesTrading = Math.round((lastTrade - firstTrade) / (1000 * 60));
+      const displayHours = Math.floor(minutesTrading / 60);
+      const displayMinutes = minutesTrading % 60;
+      
       let hourContribution = 0;
       let hourDetail = '';
+      
+      // Format duration string
+      const durationStr = displayHours > 0 
+        ? (displayMinutes > 0 
+            ? (language === 'fr' ? `${displayHours}h${displayMinutes}min` : `${displayHours}h${displayMinutes}m`)
+            : (language === 'fr' ? `${displayHours}h` : `${displayHours}h`))
+        : (language === 'fr' ? `${displayMinutes}min` : `${displayMinutes}m`);
 
       if (hoursTrading >= 8) {
         hourContribution = 30;
-        hourDetail = language === 'fr' ? `${hoursTrading}h de trading - très long` : `${hoursTrading}h trading - very long`;
+        hourDetail = language === 'fr' ? `${durationStr} de trading - très long` : `${durationStr} trading - very long`;
       } else if (hoursTrading >= 6) {
         hourContribution = 20;
-        hourDetail = language === 'fr' ? `${hoursTrading}h de trading - long` : `${hoursTrading}h trading - long`;
+        hourDetail = language === 'fr' ? `${durationStr} de trading - long` : `${durationStr} trading - long`;
       } else if (hoursTrading >= 4) {
         hourContribution = 10;
-        hourDetail = language === 'fr' ? `${hoursTrading}h de trading` : `${hoursTrading}h trading`;
+        hourDetail = language === 'fr' ? `${durationStr} de trading - modéré` : `${durationStr} trading - moderate`;
+      } else if (minutesTrading > 0) {
+        hourDetail = language === 'fr' ? `${durationStr} de trading - léger` : `${durationStr} trading - light`;
       } else {
-        hourDetail = language === 'fr' ? `${hoursTrading}h de trading - normal` : `${hoursTrading}h trading - normal`;
+        // Single trade or trades at the same time
+        hourDetail = language === 'fr' ? `Session très courte` : `Very short session`;
       }
 
       fatigueScore += hourContribution;

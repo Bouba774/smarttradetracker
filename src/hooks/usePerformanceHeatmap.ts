@@ -127,18 +127,32 @@ export const usePerformanceHeatmap = (trades: Trade[], language: string = 'fr'):
     const tradedDays = byDay.filter(d => d.trades > 0);
     const tradedHours = byHour.filter(h => h.trades > 0);
 
+    // Find best day (highest PnL)
     const bestDay = tradedDays.length > 0
       ? tradedDays.reduce((best, curr) => curr.pnl > best.pnl ? curr : best)
       : null;
-    const worstDay = tradedDays.length > 0
-      ? tradedDays.reduce((worst, curr) => curr.pnl < worst.pnl ? curr : worst)
-      : null;
+    
+    // Find worst day (lowest PnL) - but only if there are multiple days or the PnL is negative
+    // If only one day traded with positive PnL, there is no "worst" day
+    let worstDay = null;
+    if (tradedDays.length > 1) {
+      worstDay = tradedDays.reduce((worst, curr) => curr.pnl < worst.pnl ? curr : worst);
+    } else if (tradedDays.length === 1 && tradedDays[0].pnl < 0) {
+      worstDay = tradedDays[0];
+    }
+    
+    // Find best hour (highest PnL)
     const bestHour = tradedHours.length > 0
       ? tradedHours.reduce((best, curr) => curr.pnl > best.pnl ? curr : best)
       : null;
-    const worstHour = tradedHours.length > 0
-      ? tradedHours.reduce((worst, curr) => curr.pnl < worst.pnl ? curr : worst)
-      : null;
+    
+    // Find worst hour - same logic as worst day
+    let worstHour = null;
+    if (tradedHours.length > 1) {
+      worstHour = tradedHours.reduce((worst, curr) => curr.pnl < worst.pnl ? curr : worst);
+    } else if (tradedHours.length === 1 && tradedHours[0].pnl < 0) {
+      worstHour = tradedHours[0];
+    }
 
     return {
       cells,
