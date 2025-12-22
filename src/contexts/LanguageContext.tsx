@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Language, 
   DEFAULT_LANGUAGE, 
@@ -12,6 +12,8 @@ import {
   isValidLanguage
 } from '@/lib/i18n';
 import { en } from '@/lib/i18n/locales/en';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LanguageContextType {
   language: Language;
@@ -19,11 +21,16 @@ interface LanguageContextType {
   t: (key: string) => string;
   isRTL: boolean;
   languages: typeof LANGUAGES;
+  isLoading: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const isSyncing = useRef(false);
+  
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem('language');
     // Validate saved language is authorized
@@ -40,6 +47,39 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
   
   const [translations, setTranslations] = useState<TranslationDictionary>(en);
+
+  // Load language from database when user is authenticated
+  useEffect(() => {
+    const loadLanguageFromDB = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('language')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading language from database:', error);
+        }
+
+        if (data?.language && isValidLanguage(data.language)) {
+          setLanguageState(data.language as Language);
+          localStorage.setItem('language', data.language);
+        }
+      } catch (e) {
+        console.error('Error loading language:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLanguageFromDB();
+  }, [user]);
 
   // Load translations when language changes
   useEffect(() => {
@@ -60,6 +100,29 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [language]);
 
+  // Sync language to database when it changes
+  const syncLanguageToDB = useCallback(async (lang: Language) => {
+    if (!user || isSyncing.current) return;
+    
+    isSyncing.current = true;
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          language: lang,
+        }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error saving language to database:', error);
+      }
+    } catch (e) {
+      console.error('Error syncing language:', e);
+    } finally {
+      isSyncing.current = false;
+    }
+  }, [user]);
+
   const setLanguage = useCallback((lang: Language) => {
     // Security: Only allow authorized languages
     if (!isValidLanguage(lang)) {
@@ -67,7 +130,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return;
     }
     setLanguageState(lang);
-  }, []);
+    syncLanguageToDB(lang);
+  }, [syncLanguageToDB]);
 
   const t = useCallback((key: string): string => {
     return getTranslation(key, translations);
@@ -79,7 +143,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setLanguage, 
       t, 
       isRTL: isRTL(language),
-      languages: LANGUAGES 
+      languages: LANGUAGES,
+      isLoading
     }}>
       {children}
     </LanguageContext.Provider>

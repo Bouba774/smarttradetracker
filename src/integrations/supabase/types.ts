@@ -1094,6 +1094,7 @@ export type Database = {
           font_size: string | null
           id: string
           known_devices: Json | null
+          language: string | null
           max_attempts: number | null
           pin_enabled: boolean | null
           pin_length: number | null
@@ -1114,6 +1115,7 @@ export type Database = {
           font_size?: string | null
           id?: string
           known_devices?: Json | null
+          language?: string | null
           max_attempts?: number | null
           pin_enabled?: boolean | null
           pin_length?: number | null
@@ -1134,6 +1136,7 @@ export type Database = {
           font_size?: string | null
           id?: string
           known_devices?: Json | null
+          language?: string | null
           max_attempts?: number | null
           pin_enabled?: boolean | null
           pin_length?: number | null
