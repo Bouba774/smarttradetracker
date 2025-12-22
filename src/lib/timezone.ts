@@ -128,10 +128,11 @@ export const getTradingDayEnd = (date: Date = new Date()): Date => {
 
 /**
  * Session types for both classic and killzones modes
+ * NOTE: 'overlap' has been removed - trades are now attributed to a single session
  */
 export type SessionType = 
   | 'sydney' | 'tokyo' | 'london' | 'newYork' 
-  | 'asia' | 'londonClose' | 'overlap' | 'none';
+  | 'asia' | 'londonClose' | 'none';
 
 /**
  * ICT Killzone definitions in NY Time (Winter time - EST)
@@ -140,9 +141,8 @@ export type SessionType =
 export const KILLZONE_HOURS = {
   asia: { start: 20, end: 0 },        // 20:00 - 00:00 NY (02:00 - 06:00 Cameroon)
   london: { start: 2, end: 5 },       // 02:00 - 05:00 NY (08:00 - 11:00 Cameroon)
-  newYork: { start: 7, end: 10 },     // 07:00 - 10:00 NY (13:00 - 16:00 Cameroon)
+  newYork: { start: 7, end: 12 },     // 07:00 - 12:00 NY (13:00 - 18:00 Cameroon) - Extended to absorb overlap
   londonClose: { start: 10, end: 12 }, // 10:00 - 12:00 NY (16:00 - 18:00 Cameroon)
-  overlap: { start: 8, end: 12 },     // 08:00 - 12:00 NY (14:00 - 18:00 Cameroon)
 } as const;
 
 /**
@@ -163,21 +163,19 @@ export const isHourInRange = (hour: number, start: number, end: number): boolean
 
 /**
  * Get the current killzone/session based on NY hour
+ * Priority: NY > London Close > London > Asia
+ * Trades between 08:00-12:00 NY are attributed to New York (no overlap category)
  */
 export const getKillzoneForNYHour = (nyHour: number): SessionType => {
-  // Check London/NY Overlap first (08:00 - 12:00 NY)
-  if (isHourInRange(nyHour, KILLZONE_HOURS.overlap.start, KILLZONE_HOURS.overlap.end)) {
-    return 'overlap';
-  }
-  
-  // London Close (10:00 - 12:00 NY) - already covered by overlap
-  if (isHourInRange(nyHour, KILLZONE_HOURS.londonClose.start, KILLZONE_HOURS.londonClose.end)) {
-    return 'londonClose';
-  }
-  
-  // New York Killzone (07:00 - 10:00 NY)
+  // New York Killzone takes priority (07:00 - 12:00 NY) - absorbs former "overlap" period
   if (isHourInRange(nyHour, KILLZONE_HOURS.newYork.start, KILLZONE_HOURS.newYork.end)) {
     return 'newYork';
+  }
+  
+  // London Close (10:00 - 12:00 NY) - only checked if not already in NY killzone
+  // Note: With NY extended to 12:00, this will rarely trigger in killzones mode
+  if (isHourInRange(nyHour, KILLZONE_HOURS.londonClose.start, KILLZONE_HOURS.londonClose.end)) {
+    return 'londonClose';
   }
   
   // London Killzone (02:00 - 05:00 NY)
@@ -211,7 +209,6 @@ export const SESSION_LABELS: Record<SessionType, { fr: string; en: string }> = {
   newYork: { fr: 'New York', en: 'New York' },
   asia: { fr: 'Killzone Asie', en: 'Asia Killzone' },
   londonClose: { fr: 'London Close', en: 'London Close' },
-  overlap: { fr: 'London/NY Overlap', en: 'London/NY Overlap' },
   none: { fr: 'Hors session', en: 'Off session' },
 };
 

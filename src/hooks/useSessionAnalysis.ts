@@ -30,14 +30,13 @@ export interface SessionAnalysis {
   mode: SessionMode;
 }
 
-// Session labels by mode and language
+// Session labels by mode and language (no overlap category)
 const SESSION_LABELS: Record<SessionMode, Record<string, { fr: string; en: string }>> = {
   classic: {
     sydney: { fr: 'Sydney', en: 'Sydney' },
     tokyo: { fr: 'Tokyo', en: 'Tokyo' },
     london: { fr: 'Londres', en: 'London' },
     newYork: { fr: 'New York', en: 'New York' },
-    overlap: { fr: 'Chevauchement', en: 'Overlap' },
     none: { fr: 'Hors session', en: 'Off session' },
   },
   killzones: {
@@ -58,9 +57,9 @@ export const useSessionAnalysis = (
   return useMemo(() => {
     const { mode } = settings;
     
-    // Define which sessions to track based on mode
+    // Define which sessions to track based on mode (no overlap)
     const sessionsToTrack: SessionType[] = mode === 'classic'
-      ? ['sydney', 'tokyo', 'london', 'newYork', 'overlap', 'none']
+      ? ['sydney', 'tokyo', 'london', 'newYork', 'none']
       : ['asia', 'london', 'newYork', 'londonClose', 'none'];
     
     // Initialize data structure

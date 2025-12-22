@@ -127,7 +127,7 @@ export const isHourInRange = (hour: number, range: SessionRange): boolean => {
 
 export type SessionType = 
   | 'sydney' | 'tokyo' | 'london' | 'newYork' | 'londonClose'
-  | 'asia' | 'overlap' | 'none';
+  | 'asia' | 'none';
 
 export const useSessionSettings = () => {
   const { user } = useAuth();
@@ -196,32 +196,27 @@ export const useSessionSettings = () => {
   }, []);
 
   // Get session for a given NY Time hour
+  // Priority: New York > London > Tokyo > Sydney (for classic mode)
+  // No overlap category - trades are attributed to a single session
   const getSessionForHour = useCallback((nyHour: number): SessionType => {
     if (settings.mode === 'classic') {
       const { sydney, tokyo, london, newYork } = settings.classic;
       
-      const inSydney = isHourInRange(nyHour, sydney);
-      const inTokyo = isHourInRange(nyHour, tokyo);
-      const inLondon = isHourInRange(nyHour, london);
-      const inNewYork = isHourInRange(nyHour, newYork);
-      
-      // Check overlaps
-      const overlaps = [inSydney, inTokyo, inLondon, inNewYork].filter(Boolean).length;
-      if (overlaps > 1) return 'overlap';
-      
-      if (inNewYork) return 'newYork';
-      if (inLondon) return 'london';
-      if (inTokyo) return 'tokyo';
-      if (inSydney) return 'sydney';
+      // Priority order: NY first (dominant session for volume)
+      // Trades between 08:00-12:00 NY go to New York, not overlap
+      if (isHourInRange(nyHour, newYork)) return 'newYork';
+      if (isHourInRange(nyHour, london)) return 'london';
+      if (isHourInRange(nyHour, tokyo)) return 'tokyo';
+      if (isHourInRange(nyHour, sydney)) return 'sydney';
       
       return 'none';
     } else {
       // Killzones mode
       const { asia, london, newYork, londonClose } = settings.killzones;
       
-      // Killzones are non-overlapping by design
-      if (isHourInRange(nyHour, londonClose)) return 'londonClose';
+      // Priority: NY > London Close > London > Asia
       if (isHourInRange(nyHour, newYork)) return 'newYork';
+      if (isHourInRange(nyHour, londonClose)) return 'londonClose';
       if (isHourInRange(nyHour, london)) return 'london';
       if (isHourInRange(nyHour, asia)) return 'asia';
       
