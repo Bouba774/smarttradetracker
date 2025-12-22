@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.validate-email]
 verify_jwt = false
+
+[functions.validate-calculations]
+verify_jwt = true

@@ -36,17 +36,26 @@ export const useAIDailySummary = (trades: Trade[], language: string = 'fr') => {
         });
       });
 
-      // Calculate today's stats
-      const wins = todayTrades.filter(t => t.result === 'win').length;
-      const losses = todayTrades.filter(t => t.result === 'loss').length;
-      const pnl = todayTrades.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
-      const pnls = todayTrades.map(t => t.profit_loss || 0);
-      const bestTrade = pnls.length > 0 ? Math.max(...pnls) : 0;
-      const worstTrade = pnls.length > 0 ? Math.min(...pnls) : 0;
+      // Calculate today's stats - only count closed trades for winrate
+      const closedTrades = todayTrades.filter(t => 
+        t.result === 'win' || t.result === 'loss' || t.result === 'breakeven'
+      );
+      const wins = closedTrades.filter(t => t.result === 'win').length;
+      const losses = closedTrades.filter(t => t.result === 'loss').length;
+      
+      // Calculate PnL only from trades with valid profit_loss
+      const tradesWithPnl = todayTrades.filter(t => 
+        t.profit_loss !== null && t.profit_loss !== undefined && Number.isFinite(t.profit_loss)
+      );
+      const pnl = tradesWithPnl.reduce((sum, t) => sum + (t.profit_loss || 0), 0);
+      const pnls = tradesWithPnl.map(t => t.profit_loss || 0).filter(p => p !== 0);
+      const bestTrade = pnls.filter(p => p > 0).length > 0 ? Math.max(...pnls.filter(p => p > 0)) : 0;
+      const worstTrade = pnls.filter(p => p < 0).length > 0 ? Math.min(...pnls.filter(p => p < 0)) : 0;
 
+      // Winrate is calculated on closed trades only
       const todayStats = {
         trades: todayTrades.length,
-        winRate: todayTrades.length > 0 ? Math.round((wins / todayTrades.length) * 100) : 0,
+        winRate: closedTrades.length > 0 ? Math.round((wins / closedTrades.length) * 100) : 0,
         pnl: Math.round(pnl * 100) / 100,
         bestTrade: Math.round(bestTrade * 100) / 100,
         worstTrade: Math.round(worstTrade * 100) / 100,
