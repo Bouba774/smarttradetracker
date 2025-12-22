@@ -13,6 +13,7 @@ import Layout from "@/components/layout/Layout";
 import { CookieConsent } from "@/components/CookieConsent";
 import LockScreen from "@/components/LockScreen";
 import { useSessionTracking } from "@/hooks/useSessionTracking";
+import ChunkErrorBoundary from "@/components/ChunkErrorBoundary";
 
 // Critical pages loaded immediately
 import Landing from "./pages/Landing";
@@ -106,65 +107,67 @@ const AppContent = () => {
       {/* Lock Screen - appears on top of everything when locked */}
       {user && <LockScreen />}
       
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Public landing page */}
-          <Route path="/" element={<Landing />} />
-          
-          {/* Auth pages */}
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/reset-pin" element={<ResetPin />} />
-          
-          {/* Public pages without authentication */}
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-of-use" element={<TermsOfUse />} />
-          <Route path="/aide" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-          <Route path="/about" element={<About />} />
-          
-          {/* Admin verification page */}
-          <Route path="/admin-verify" element={<ProtectedRoute><AdminSecretValidation /></ProtectedRoute>} />
-          
-          {/* ========== USER ROUTES ========== */}
-          <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-          <Route path="/add-trade" element={<ProtectedRoute><Layout><AddTrade /></Layout></ProtectedRoute>} />
-          <Route path="/history" element={<ProtectedRoute><Layout><History /></Layout></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
-          <Route path="/comparison" element={<ProtectedRoute><Layout><PeriodComparison /></Layout></ProtectedRoute>} />
-          <Route path="/psychology" element={<ProtectedRoute><Layout><PsychologicalAnalysis /></Layout></ProtectedRoute>} />
-          <Route path="/journal" element={<ProtectedRoute><Layout><Journal /></Layout></ProtectedRoute>} />
-          <Route path="/calculator" element={<ProtectedRoute><Layout><Calculator /></Layout></ProtectedRoute>} />
-          <Route path="/currency-conversion" element={<ProtectedRoute><Layout><CurrencyConversion /></Layout></ProtectedRoute>} />
-          <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
-          <Route path="/sessions" element={<ProtectedRoute><Layout><SessionsAdmin /></Layout></ProtectedRoute>} />
-          <Route path="/admin-roles" element={<ProtectedRoute><Layout><AdminRoles /></Layout></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
-          <Route path="/privacy-center" element={<ProtectedRoute><Layout><PrivacyCenter /></Layout></ProtectedRoute>} />
-          
-          {/* ========== ADMIN ROUTES ========== */}
-          <Route path="/app/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="add-trade" element={<AdminAddTrade />} />
-            <Route path="history" element={<AdminHistory />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="comparison" element={<AdminComparison />} />
-            <Route path="psychology" element={<AdminPsychology />} />
-            <Route path="journal" element={<AdminJournal />} />
-            <Route path="calculator" element={<AdminCalculator />} />
-            <Route path="currency-conversion" element={<AdminCurrencyConversion />} />
-            <Route path="challenges" element={<AdminChallenges />} />
-            <Route path="sessions" element={<AdminSessions />} />
-            <Route path="roles" element={<AdminRolesPage />} />
-            <Route path="audit" element={<AdminAuditHistory />} />
-            <Route path="profile" element={<AdminProfile />} />
-            <Route path="settings" element={<AdminSettings />} />
-            <Route path="about" element={<AdminAbout />} />
-          </Route>
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+      <ChunkErrorBoundary>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public landing page */}
+            <Route path="/" element={<Landing />} />
+            
+            {/* Auth pages */}
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-pin" element={<ResetPin />} />
+            
+            {/* Public pages without authentication */}
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-use" element={<TermsOfUse />} />
+            <Route path="/aide" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+            <Route path="/about" element={<About />} />
+            
+            {/* Admin verification page */}
+            <Route path="/admin-verify" element={<ProtectedRoute><AdminSecretValidation /></ProtectedRoute>} />
+            
+            {/* ========== USER ROUTES ========== */}
+            <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+            <Route path="/add-trade" element={<ProtectedRoute><Layout><AddTrade /></Layout></ProtectedRoute>} />
+            <Route path="/history" element={<ProtectedRoute><Layout><History /></Layout></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Layout><Reports /></Layout></ProtectedRoute>} />
+            <Route path="/comparison" element={<ProtectedRoute><Layout><PeriodComparison /></Layout></ProtectedRoute>} />
+            <Route path="/psychology" element={<ProtectedRoute><Layout><PsychologicalAnalysis /></Layout></ProtectedRoute>} />
+            <Route path="/journal" element={<ProtectedRoute><Layout><Journal /></Layout></ProtectedRoute>} />
+            <Route path="/calculator" element={<ProtectedRoute><Layout><Calculator /></Layout></ProtectedRoute>} />
+            <Route path="/currency-conversion" element={<ProtectedRoute><Layout><CurrencyConversion /></Layout></ProtectedRoute>} />
+            <Route path="/challenges" element={<ProtectedRoute><Layout><Challenges /></Layout></ProtectedRoute>} />
+            <Route path="/sessions" element={<ProtectedRoute><Layout><SessionsAdmin /></Layout></ProtectedRoute>} />
+            <Route path="/admin-roles" element={<ProtectedRoute><Layout><AdminRoles /></Layout></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+            <Route path="/privacy-center" element={<ProtectedRoute><Layout><PrivacyCenter /></Layout></ProtectedRoute>} />
+            
+            {/* ========== ADMIN ROUTES ========== */}
+            <Route path="/app/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="add-trade" element={<AdminAddTrade />} />
+              <Route path="history" element={<AdminHistory />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="comparison" element={<AdminComparison />} />
+              <Route path="psychology" element={<AdminPsychology />} />
+              <Route path="journal" element={<AdminJournal />} />
+              <Route path="calculator" element={<AdminCalculator />} />
+              <Route path="currency-conversion" element={<AdminCurrencyConversion />} />
+              <Route path="challenges" element={<AdminChallenges />} />
+              <Route path="sessions" element={<AdminSessions />} />
+              <Route path="roles" element={<AdminRolesPage />} />
+              <Route path="audit" element={<AdminAuditHistory />} />
+              <Route path="profile" element={<AdminProfile />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="about" element={<AdminAbout />} />
+            </Route>
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </ChunkErrorBoundary>
       {user && (
         <Suspense fallback={null}>
           <AIChatBot />
