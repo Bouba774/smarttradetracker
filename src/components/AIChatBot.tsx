@@ -3,15 +3,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ImagePlus, XCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTrades } from '@/hooks/useTrades';
 import { useTraderUserData } from '@/hooks/useTraderUserData';
-import { streamChat } from '@/lib/chatStream';
+import { streamChat, fileToBase64, createImageMessage } from '@/lib/chatStream';
+
+interface MessageContent {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+  };
+}
 
 interface Message {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | MessageContent[];
 }
 
 const AIChatBot: React.FC = () => {
@@ -23,8 +31,11 @@ const AIChatBot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,10 +49,36 @@ const AIChatBot: React.FC = () => {
     }
   }, [isOpen]);
 
-  const handleStreamChat = async (userMessage: string) => {
-    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedImage(file);
+      const preview = await fileToBase64(file);
+      setImagePreview(preview);
+    }
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleStreamChat = async (userMessage: string, imageFile?: File | null) => {
+    let messageContent: string | MessageContent[];
+    
+    if (imageFile) {
+      messageContent = await createImageMessage(userMessage, imageFile);
+    } else {
+      messageContent = userMessage;
+    }
+    
+    const newMessages: Message[] = [...messages, { role: 'user', content: messageContent }];
     setMessages(newMessages);
     setIsLoading(true);
+    clearSelectedImage();
 
     await streamChat({
       messages: newMessages,
@@ -70,10 +107,10 @@ const AIChatBot: React.FC = () => {
   };
 
   const handleSend = () => {
-    if (!input.trim() || isLoading) return;
-    const message = input.trim();
+    if ((!input.trim() && !selectedImage) || isLoading) return;
+    const message = input.trim() || (selectedImage ? 'Analyse cette image' : '');
     setInput('');
-    handleStreamChat(message);
+    handleStreamChat(message, selectedImage);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -81,6 +118,18 @@ const AIChatBot: React.FC = () => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const getMessageText = (content: string | MessageContent[]): string => {
+    if (typeof content === 'string') return content;
+    const textContent = content.find(c => c.type === 'text');
+    return textContent?.text || '';
+  };
+
+  const getMessageImage = (content: string | MessageContent[]): string | null => {
+    if (typeof content === 'string') return null;
+    const imageContent = content.find(c => c.type === 'image_url');
+    return imageContent?.image_url?.url || null;
   };
 
   const suggestions = [
@@ -108,11 +157,11 @@ const AIChatBot: React.FC = () => {
       {/* Chat Window */}
       <div
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] transition-all duration-300 transform origin-bottom-right",
+          "fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-48px)] transition-all duration-300 transform origin-bottom-right",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
         )}
       >
-        <div className="glass-card border border-primary/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
+        <div className="glass-card border border-primary/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[550px]">
           {/* Header */}
           <div className="bg-gradient-primary p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -124,7 +173,7 @@ const AIChatBot: React.FC = () => {
                   {t('chat.title')}
                 </h3>
                 <p className="text-primary-foreground/70 text-xs">
-                  Smart Trade Tracker
+                  Expert Trading & Application
                 </p>
               </div>
             </div>
@@ -148,10 +197,13 @@ const AIChatBot: React.FC = () => {
                 <h4 className="font-display font-semibold text-foreground mb-2">
                   {t('chat.greeting')}
                 </h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-2">
                   {t('chat.intro')}
                 </p>
-                <div className="flex flex-wrap gap-2 mt-4">
+                <p className="text-xs text-muted-foreground/80 mb-4">
+                  💡 Je peux analyser tes graphiques ! Envoie-moi une image.
+                </p>
+                <div className="flex flex-wrap gap-2">
                   {suggestions.map((suggestion) => (
                     <Button
                       key={suggestion}
@@ -191,7 +243,16 @@ const AIChatBot: React.FC = () => {
                           : 'bg-secondary text-foreground rounded-bl-md'
                       )}
                     >
-                      {msg.content || (
+                      {/* Show image if present */}
+                      {getMessageImage(msg.content) && (
+                        <img 
+                          src={getMessageImage(msg.content)!} 
+                          alt="Uploaded" 
+                          className="max-w-full rounded-lg mb-2 max-h-32 object-cover"
+                        />
+                      )}
+                      {/* Show text */}
+                      {(typeof msg.content === 'string' ? msg.content : getMessageText(msg.content)) || (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       )}
                     </div>
@@ -216,21 +277,57 @@ const AIChatBot: React.FC = () => {
             )}
           </ScrollArea>
 
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="px-4 py-2 border-t border-border bg-background/50">
+              <div className="relative inline-block">
+                <img 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  className="max-h-20 rounded-lg border border-border"
+                />
+                <button
+                  onClick={clearSelectedImage}
+                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                >
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Input */}
           <div className="p-4 border-t border-border bg-background/50">
             <div className="flex gap-2">
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="shrink-0"
+                title="Envoyer une image"
+              >
+                <ImagePlus className="w-4 h-4" />
+              </Button>
               <Input
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={t('chat.placeholder')}
+                placeholder={selectedImage ? "Décris ce que tu veux analyser..." : t('chat.placeholder')}
                 disabled={isLoading}
                 className="flex-1"
               />
               <Button
                 onClick={handleSend}
-                disabled={!input.trim() || isLoading}
+                disabled={(!input.trim() && !selectedImage) || isLoading}
                 size="icon"
                 className="bg-gradient-primary hover:opacity-90"
               >
