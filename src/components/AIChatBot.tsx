@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { streamChat, fileToBase64, createImageMessage, MessageContent } from '@/lib/chatStream';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
+import { useLocation } from 'react-router-dom';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -24,6 +25,7 @@ interface ChatMessage {
 const AIChatBot: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const location = useLocation();
   const { trades } = useTrades();
   const userData = useTraderUserData(trades);
   const {
@@ -209,15 +211,21 @@ const AIChatBot: React.FC = () => {
 
   const dateLocale = language === 'fr' ? fr : enUS;
 
+  // Don't show on landing page
+  if (location.pathname === '/') {
+    return null;
+  }
+
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button with bounce animation */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg transition-all duration-300",
+          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
           "bg-gradient-primary hover:scale-110 flex items-center justify-center",
-          "animate-pulse-slow shadow-neon",
+          "shadow-neon transition-all duration-300",
+          !isOpen && "animate-bounce-gentle",
           isOpen && "scale-0 opacity-0"
         )}
         aria-label="Open AI Chat"
