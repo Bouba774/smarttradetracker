@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useTradeFocus } from '@/hooks/useTradeFocus';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useSettings, AppSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -53,26 +54,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CURRENCIES, getCurrencyLabel } from '@/data/currencies';
 import { SecuritySettings } from '@/components/SecuritySettings';
-
-const SETTINGS_STORAGE_KEY = 'smart-trade-tracker-settings';
-
-interface AppSettings {
-  vibration: boolean;
-  sounds: boolean;
-  animations: boolean;
-  fontSize: 'small' | 'standard' | 'large';
-  background: 'default' | 'gradient' | 'dark' | 'light';
-  currency: string;
-}
-
-const defaultSettings: AppSettings = {
-  vibration: true,
-  sounds: true,
-  animations: true,
-  fontSize: 'standard',
-  background: 'default',
-  currency: 'USD',
-};
 
 // Language Selector Component with Search
 interface LanguageSelectorProps {
@@ -177,36 +158,13 @@ const Settings: React.FC = () => {
   const { triggerFeedback } = useFeedback();
   const { user } = useAuth();
   const tradeFocus = useTradeFocus();
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
-  const [primaryColor, setPrimaryColor] = useState('blue');
+  const { settings, updateSetting: updateSettingHook, resetSettings, defaultSettings } = useSettings();
+  const [primaryColor, setPrimaryColor] = useState(() => {
+    return localStorage.getItem('smart-trade-tracker-primary-color') || 'blue';
+  });
 
-  // Load settings from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsed });
-      } catch (e) {
-        console.error('Error loading settings:', e);
-      }
-    }
-    
-    const savedColor = localStorage.getItem('smart-trade-tracker-primary-color');
-    if (savedColor) {
-      setPrimaryColor(savedColor);
-    }
-  }, []);
-
-  // Save settings to localStorage
-  const saveSettings = (newSettings: AppSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
-  };
-
-  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    const newSettings = { ...settings, [key]: value };
-    saveSettings(newSettings);
+  const handleUpdateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    updateSettingHook(key, value);
     triggerFeedback('click');
     
     // Apply font size
@@ -251,8 +209,8 @@ const Settings: React.FC = () => {
     toast.success(t('colorUpdated'));
   };
 
-  const handleReset = () => {
-    saveSettings(defaultSettings);
+  const handleReset = async () => {
+    await resetSettings();
     setPrimaryColor('blue');
     localStorage.removeItem('smart-trade-tracker-primary-color');
     document.documentElement.style.fontSize = '16px';
@@ -343,7 +301,7 @@ const Settings: React.FC = () => {
         </div>
         <Select 
           value={settings.currency} 
-          onValueChange={(value) => updateSetting('currency', value)}
+          onValueChange={(value) => handleUpdateSetting('currency', value)}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={language === 'fr' ? 'Sélectionner une devise' : 'Select currency'} />
@@ -442,7 +400,7 @@ const Settings: React.FC = () => {
           {fontSizes.map((size) => (
             <button
               key={size.id}
-              onClick={() => updateSetting('fontSize', size.id as AppSettings['fontSize'])}
+              onClick={() => handleUpdateSetting('fontSize', size.id as AppSettings['fontSize'])}
               className={cn(
                 "p-4 rounded-lg border transition-all text-center",
                 settings.fontSize === size.id
@@ -480,7 +438,7 @@ const Settings: React.FC = () => {
           <Switch
             id="vibration"
             checked={settings.vibration}
-            onCheckedChange={(checked) => updateSetting('vibration', checked)}
+            onCheckedChange={(checked) => handleUpdateSetting('vibration', checked)}
           />
         </div>
 
@@ -495,7 +453,7 @@ const Settings: React.FC = () => {
           <Switch
             id="sounds"
             checked={settings.sounds}
-            onCheckedChange={(checked) => updateSetting('sounds', checked)}
+            onCheckedChange={(checked) => handleUpdateSetting('sounds', checked)}
           />
         </div>
 
@@ -510,7 +468,7 @@ const Settings: React.FC = () => {
           <Switch
             id="animations"
             checked={settings.animations}
-            onCheckedChange={(checked) => updateSetting('animations', checked)}
+            onCheckedChange={(checked) => handleUpdateSetting('animations', checked)}
           />
         </div>
       </div>
@@ -527,7 +485,7 @@ const Settings: React.FC = () => {
           {backgrounds.map((bg) => (
             <button
               key={bg.id}
-              onClick={() => updateSetting('background', bg.id as AppSettings['background'])}
+              onClick={() => handleUpdateSetting('background', bg.id as AppSettings['background'])}
               className={cn(
                 "p-4 rounded-lg border transition-all text-center",
                 settings.background === bg.id
