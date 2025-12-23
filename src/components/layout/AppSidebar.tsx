@@ -4,6 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { useAdmin } from '@/contexts/AdminContext';
 import { cn } from '@/lib/utils';
+import { APP_VERSION } from '@/lib/version';
 import {
   Sidebar,
   SidebarContent,
@@ -122,7 +123,9 @@ const AppSidebar: React.FC = () => {
                 <h1 className="font-display font-bold text-foreground text-sm leading-tight">
                   Smart Trade
                 </h1>
-                <p className="text-[10px] text-primary neon-text">Tracker</p>
+                <p className="text-[10px] text-primary neon-text">
+                  Tracker <span className="text-muted-foreground">V{APP_VERSION}</span>
+                </p>
               </div>
             </div>
             
