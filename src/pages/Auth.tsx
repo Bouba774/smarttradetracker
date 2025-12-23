@@ -38,16 +38,14 @@ const Auth: React.FC = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
 
-  // Disable Turnstile in preview/development environments (Cloudflare requires whitelisted domains)
-  const isPreviewOrDev = (): boolean => {
+  // Enable Turnstile on all environments (Cloudflare domains must be configured)
+  // Note: For preview to work, add *.lovable.app to Turnstile allowed domains in Cloudflare dashboard
+  const isLocalhost = (): boolean => {
     const hostname = window.location.hostname;
-    return hostname === 'localhost' || 
-           hostname.includes('lovableproject.com') || 
-           hostname.includes('preview') ||
-           hostname.includes('127.0.0.1');
+    return hostname === 'localhost' || hostname === '127.0.0.1';
   };
   
-  const hasTurnstile = !isPreviewOrDev();
+  const hasTurnstile = !isLocalhost();
 
   const emailSchema = z.string().email(t('invalidEmail'));
   const passwordSchema = createPasswordSchema(language);
