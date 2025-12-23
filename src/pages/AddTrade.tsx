@@ -476,24 +476,18 @@ const AddTrade: React.FC = () => {
             {t('registerNewTrade')}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {hasPendingData && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={clearPendingData}
-              className="gap-2 text-muted-foreground hover:text-loss"
-            >
-              <Trash2 className="w-4 h-4" />
-              {language === 'fr' ? 'Effacer' : 'Clear'}
-            </Button>
-          )}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">{t('score')}: {calculateQualityScore()}/100</span>
-          </div>
-        </div>
+        {hasPendingData && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearPendingData}
+            className="gap-2 text-muted-foreground hover:text-loss"
+          >
+            <Trash2 className="w-4 h-4" />
+            {language === 'fr' ? 'Effacer' : 'Clear'}
+          </Button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -940,18 +934,24 @@ const AddTrade: React.FC = () => {
         </div>
 
         {/* Submit */}
-        <div className="flex justify-end gap-4">
-          <Button type="button" variant="outline" disabled={isSubmitting}>
-            {t('cancel')}
-          </Button>
-          <Button type="submit" className="gap-2 bg-gradient-primary hover:opacity-90" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            {isSubmitting ? 'Enregistrement...' : t('saveTrade')}
-          </Button>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/30">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">{t('score')}: {calculateQualityScore()}/100</span>
+          </div>
+          <div className="flex gap-4">
+            <Button type="button" variant="outline" disabled={isSubmitting}>
+              {t('cancel')}
+            </Button>
+            <Button type="submit" className="gap-2 bg-gradient-primary hover:opacity-90" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSubmitting ? 'Enregistrement...' : t('saveTrade')}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
