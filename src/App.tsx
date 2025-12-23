@@ -181,8 +181,8 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <LanguageProvider>
           <SecurityProvider>
             <AdminProvider>
               <TooltipProvider>
@@ -195,8 +195,8 @@ const App = () => (
               </TooltipProvider>
             </AdminProvider>
           </SecurityProvider>
-        </AuthProvider>
-      </LanguageProvider>
+        </LanguageProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
