@@ -293,10 +293,14 @@ const Calculator: React.FC = () => {
               <div className="space-y-2">
                 <Label>{t('capital')} ({getCurrencySymbol()})</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="10000"
                   value={formData.capital}
-                  onChange={(e) => handleCapitalChange(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                    handleCapitalChange(value);
+                  }}
                 />
               </div>
               <div className="space-y-2 col-span-2">
@@ -304,11 +308,14 @@ const Calculator: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <Input
-                      type="number"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="1.0"
                       value={formData.riskPercent}
-                      onChange={(e) => handleRiskPercentChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                        handleRiskPercentChange(value);
+                      }}
                       className={cn(
                         "pr-8",
                         parseFloat(formData.riskPercent) > 2 && "border-loss/50"
@@ -318,11 +325,14 @@ const Calculator: React.FC = () => {
                   </div>
                   <div className="relative">
                     <Input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="100.00"
                       value={formData.riskCash}
-                      onChange={(e) => handleRiskCashChange(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                        handleRiskCashChange(value);
+                      }}
                       className="pr-8"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{getCurrencySymbol()}</span>
