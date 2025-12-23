@@ -3,32 +3,44 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ImagePlus, XCircle } from 'lucide-react';
+import { 
+  MessageCircle, X, Send, Bot, User, Loader2, Sparkles, 
+  ImagePlus, XCircle, History, Plus, Trash2, ChevronLeft 
+} from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTrades } from '@/hooks/useTrades';
 import { useTraderUserData } from '@/hooks/useTraderUserData';
-import { streamChat, fileToBase64, createImageMessage } from '@/lib/chatStream';
+import { useAIConversations } from '@/hooks/useAIConversations';
+import { useAuth } from '@/contexts/AuthContext';
+import { streamChat, fileToBase64, createImageMessage, MessageContent } from '@/lib/chatStream';
+import { format } from 'date-fns';
+import { fr, enUS } from 'date-fns/locale';
 
-interface MessageContent {
-  type: 'text' | 'image_url';
-  text?: string;
-  image_url?: {
-    url: string;
-  };
-}
-
-interface Message {
+interface ChatMessage {
   role: 'user' | 'assistant';
   content: string | MessageContent[];
 }
 
 const AIChatBot: React.FC = () => {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const { trades } = useTrades();
   const userData = useTraderUserData(trades);
+  const {
+    conversations,
+    currentConversationId,
+    messages: savedMessages,
+    createConversation,
+    addMessage,
+    updateLastAssistantMessage,
+    selectConversation,
+    deleteConversation,
+    startNewConversation
+  } = useAIConversations();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -37,17 +49,31 @@ const AIChatBot: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync saved messages to local state when conversation changes
+  useEffect(() => {
+    const converted: ChatMessage[] = savedMessages.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.image_url 
+        ? [
+            { type: 'image_url' as const, image_url: { url: msg.image_url } },
+            { type: 'text' as const, text: msg.content }
+          ]
+        : msg.content
+    }));
+    setLocalMessages(converted);
+  }, [savedMessages]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [localMessages]);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
+    if (isOpen && inputRef.current && !showHistory) {
       inputRef.current.focus();
     }
-  }, [isOpen]);
+  }, [isOpen, showHistory]);
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,41 +93,68 @@ const AIChatBot: React.FC = () => {
   };
 
   const handleStreamChat = async (userMessage: string, imageFile?: File | null) => {
+    if (!user) return;
+
+    let conversationId = currentConversationId;
+    
+    // Create new conversation if needed
+    if (!conversationId) {
+      conversationId = await createConversation();
+      if (!conversationId) return;
+    }
+
     let messageContent: string | MessageContent[];
+    let imageUrl: string | null = null;
     
     if (imageFile) {
+      imageUrl = await fileToBase64(imageFile);
       messageContent = await createImageMessage(userMessage, imageFile);
     } else {
       messageContent = userMessage;
     }
     
-    const newMessages: Message[] = [...messages, { role: 'user', content: messageContent }];
-    setMessages(newMessages);
+    // Add user message to local state
+    const newMessages: ChatMessage[] = [...localMessages, { role: 'user', content: messageContent }];
+    setLocalMessages(newMessages);
     setIsLoading(true);
     clearSelectedImage();
+
+    // Save user message to database
+    await addMessage('user', userMessage, imageUrl);
+
+    let assistantContent = '';
 
     await streamChat({
       messages: newMessages,
       userData,
       language,
       onStart: () => {
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+        setLocalMessages(prev => [...prev, { role: 'assistant', content: '' }]);
       },
       onDelta: (content) => {
-        setMessages(prev => {
+        assistantContent = content;
+        setLocalMessages(prev => {
           const updated = [...prev];
           updated[updated.length - 1] = { role: 'assistant', content };
           return updated;
         });
       },
       onError: (error) => {
-        setMessages(prev => [
-          ...prev,
-          { role: 'assistant', content: `❌ ${error.message}` },
-        ]);
+        const errorMsg = `❌ ${error.message}`;
+        setLocalMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: 'assistant', content: errorMsg };
+          return updated;
+        });
+        // Save error message
+        addMessage('assistant', errorMsg);
       },
       onDone: () => {
         setIsLoading(false);
+        // Save final assistant message
+        if (assistantContent) {
+          addMessage('assistant', assistantContent);
+        }
       },
     });
   };
@@ -132,11 +185,29 @@ const AIChatBot: React.FC = () => {
     return imageContent?.image_url?.url || null;
   };
 
+  const handleNewConversation = () => {
+    startNewConversation();
+    setLocalMessages([]);
+    setShowHistory(false);
+  };
+
+  const handleSelectConversation = async (convId: string) => {
+    await selectConversation(convId);
+    setShowHistory(false);
+  };
+
+  const handleDeleteConversation = async (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation();
+    await deleteConversation(convId);
+  };
+
   const suggestions = [
     t('chat.suggestions.analyzeStats'),
     t('chat.suggestions.dailyTips'),
     t('chat.suggestions.bestSetup'),
   ];
+
+  const dateLocale = language === 'fr' ? fr : enUS;
 
   return (
     <>
@@ -165,176 +236,262 @@ const AIChatBot: React.FC = () => {
           {/* Header */}
           <div className="bg-gradient-primary p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
+              {showHistory && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowHistory(false)}
+                  className="text-primary-foreground hover:bg-white/20 -ml-2"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
+              )}
               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
                 <h3 className="font-display font-semibold text-primary-foreground text-sm">
-                  {t('chat.title')}
+                  {showHistory ? t('chat.history') || 'Historique' : t('chat.title')}
                 </h3>
                 <p className="text-primary-foreground/70 text-xs">
-                  Expert Trading & Application
+                  {showHistory 
+                    ? `${conversations.length} conversation${conversations.length > 1 ? 's' : ''}`
+                    : 'Expert Trading & Application'
+                  }
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="text-primary-foreground hover:bg-white/20"
-            >
-              <X className="w-5 h-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {!showHistory && user && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleNewConversation}
+                    className="text-primary-foreground hover:bg-white/20"
+                    title="Nouvelle conversation"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowHistory(true)}
+                    className="text-primary-foreground hover:bg-white/20"
+                    title="Historique"
+                  >
+                    <History className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-primary-foreground hover:bg-white/20"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
 
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-                  <Bot className="w-8 h-8 text-primary" />
+          {/* History View */}
+          {showHistory ? (
+            <ScrollArea className="flex-1 p-4">
+              {conversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <History className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground text-sm">
+                    Aucune conversation
+                  </p>
                 </div>
-                <h4 className="font-display font-semibold text-foreground mb-2">
-                  {t('chat.greeting')}
-                </h4>
-                <p className="text-sm text-muted-foreground mb-2">
-                  {t('chat.intro')}
-                </p>
-                <p className="text-xs text-muted-foreground/80 mb-4">
-                  💡 Je peux analyser tes graphiques ! Envoie-moi une image.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {suggestions.map((suggestion) => (
-                    <Button
-                      key={suggestion}
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        setInput(suggestion);
-                        handleStreamChat(suggestion);
-                      }}
+              ) : (
+                <div className="space-y-2">
+                  {conversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => handleSelectConversation(conv.id)}
+                      className={cn(
+                        "p-3 rounded-lg cursor-pointer transition-all group",
+                        "hover:bg-primary/10 border border-transparent hover:border-primary/20",
+                        currentConversationId === conv.id && "bg-primary/10 border-primary/30"
+                      )}
                     >
-                      {suggestion}
-                    </Button>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-foreground truncate">
+                            {conv.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {format(new Date(conv.updated_at), 'PPp', { locale: dateLocale })}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleDeleteConversation(e, conv.id)}
+                          className="opacity-0 group-hover:opacity-100 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "flex gap-2",
-                      msg.role === 'user' ? 'justify-end' : 'justify-start'
-                    )}
-                  >
-                    {msg.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
-                        msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-secondary text-foreground rounded-bl-md'
-                      )}
-                    >
-                      {/* Show image if present */}
-                      {getMessageImage(msg.content) && (
-                        <img 
-                          src={getMessageImage(msg.content)!} 
-                          alt="Uploaded" 
-                          className="max-w-full rounded-lg mb-2 max-h-32 object-cover"
-                        />
-                      )}
-                      {/* Show text */}
-                      {(typeof msg.content === 'string' ? msg.content : getMessageText(msg.content)) || (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      )}
+              )}
+            </ScrollArea>
+          ) : (
+            <>
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                {localMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                      <Bot className="w-8 h-8 text-primary" />
                     </div>
-                    {msg.role === 'user' && (
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    )}
+                    <h4 className="font-display font-semibold text-foreground mb-2">
+                      {t('chat.greeting')}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {t('chat.intro')}
+                    </p>
+                    <p className="text-xs text-muted-foreground/80 mb-4">
+                      💡 Je peux analyser tes graphiques ! Envoie-moi une image.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((suggestion) => (
+                        <Button
+                          key={suggestion}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            setInput(suggestion);
+                            handleStreamChat(suggestion);
+                          }}
+                        >
+                          {suggestion}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                ))}
-                {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                  <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Bot className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="bg-secondary rounded-2xl rounded-bl-md px-4 py-2">
-                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                    </div>
+                ) : (
+                  <div className="space-y-4">
+                    {localMessages.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "flex gap-2",
+                          msg.role === 'user' ? 'justify-end' : 'justify-start'
+                        )}
+                      >
+                        {msg.role === 'assistant' && (
+                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <Bot className="w-4 h-4 text-primary" />
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground rounded-br-md'
+                              : 'bg-secondary text-foreground rounded-bl-md'
+                          )}
+                        >
+                          {/* Show image if present */}
+                          {getMessageImage(msg.content) && (
+                            <img 
+                              src={getMessageImage(msg.content)!} 
+                              alt="Uploaded" 
+                              className="max-w-full rounded-lg mb-2 max-h-32 object-cover"
+                            />
+                          )}
+                          {/* Show text */}
+                          {(typeof msg.content === 'string' ? msg.content : getMessageText(msg.content)) || (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          )}
+                        </div>
+                        {msg.role === 'user' && (
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {isLoading && localMessages[localMessages.length - 1]?.role === 'user' && (
+                      <div className="flex gap-2 justify-start">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <Bot className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="bg-secondary rounded-2xl rounded-bl-md px-4 py-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </ScrollArea>
+              </ScrollArea>
 
-          {/* Image Preview */}
-          {imagePreview && (
-            <div className="px-4 py-2 border-t border-border bg-background/50">
-              <div className="relative inline-block">
-                <img 
-                  src={imagePreview} 
-                  alt="Preview" 
-                  className="max-h-20 rounded-lg border border-border"
-                />
-                <button
-                  onClick={clearSelectedImage}
-                  className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="px-4 py-2 border-t border-border bg-background/50">
+                  <div className="relative inline-block">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="max-h-20 rounded-lg border border-border"
+                    />
+                    <button
+                      onClick={clearSelectedImage}
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                    >
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="p-4 border-t border-border bg-background/50">
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoading}
+                    className="shrink-0"
+                    title="Envoyer une image"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </Button>
+                  <Input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={selectedImage ? "Décris ce que tu veux analyser..." : t('chat.placeholder')}
+                    disabled={isLoading}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleSend}
+                    disabled={(!input.trim() && !selectedImage) || isLoading}
+                    size="icon"
+                    className="bg-gradient-primary hover:opacity-90"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            </>
           )}
-
-          {/* Input */}
-          <div className="p-4 border-t border-border bg-background/50">
-            <div className="flex gap-2">
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-                className="shrink-0"
-                title="Envoyer une image"
-              >
-                <ImagePlus className="w-4 h-4" />
-              </Button>
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={selectedImage ? "Décris ce que tu veux analyser..." : t('chat.placeholder')}
-                disabled={isLoading}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleSend}
-                disabled={(!input.trim() && !selectedImage) || isLoading}
-                size="icon"
-                className="bg-gradient-primary hover:opacity-90"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </>

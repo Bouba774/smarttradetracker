@@ -1,6 +1,6 @@
 import { TraderUserData } from '@/hooks/useTraderUserData';
 
-interface MessageContent {
+export interface MessageContent {
   type: 'text' | 'image_url';
   text?: string;
   image_url?: {
