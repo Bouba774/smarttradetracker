@@ -1,8 +1,16 @@
 import { TraderUserData } from '@/hooks/useTraderUserData';
 
+interface MessageContent {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+  };
+}
+
 interface Message {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | MessageContent[];
 }
 
 interface StreamChatOptions {
@@ -88,4 +96,37 @@ export const streamChat = async ({
   } catch (error) {
     onError(error instanceof Error ? error : new Error('Une erreur est survenue'));
   }
+};
+
+// Convert file to base64
+export const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+// Create message content with image
+export const createImageMessage = async (text: string, imageFile: File): Promise<MessageContent[]> => {
+  const base64Image = await fileToBase64(imageFile);
+  
+  const content: MessageContent[] = [];
+  
+  if (text.trim()) {
+    content.push({
+      type: 'text',
+      text: text,
+    });
+  }
+  
+  content.push({
+    type: 'image_url',
+    image_url: {
+      url: base64Image,
+    },
+  });
+  
+  return content;
 };
