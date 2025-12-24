@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useFavoriteAssets } from '@/hooks/useFavoriteAssets';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Calculator as CalcIcon, ArrowRight, AlertTriangle, CheckCircle, Send, Search, TrendingUp, TrendingDown } from 'lucide-react';
+import { Calculator as CalcIcon, ArrowRight, AlertTriangle, CheckCircle, Send, Search, TrendingUp, TrendingDown, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,8 +21,9 @@ export const PENDING_TRADE_KEY = 'pending_trade_data';
 import { ASSET_CATEGORIES, PIP_VALUES, DECIMALS, getPipSize, getAssetCategory } from '@/data/assets';
 
 const Calculator: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { formatAmount, getCurrencySymbol, currency } = useCurrency();
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteAssets();
   const navigate = useNavigate();
   const [assetSearch, setAssetSearch] = useState('');
 
@@ -53,22 +55,26 @@ const Calculator: React.FC = () => {
 
   const [warnings, setWarnings] = useState<string[]>([]);
 
-  // Filter assets based on search
-  const filteredAssets = useMemo(() => {
-    if (!assetSearch) return ASSET_CATEGORIES;
+  // Filter assets based on search and organize with favorites first
+  const { filteredAssets, filteredFavorites } = useMemo(() => {
     const searchLower = assetSearch.toLowerCase();
     const result: { [key: string]: string[] } = {};
+    const favs: string[] = [];
     
     for (const [category, assets] of Object.entries(ASSET_CATEGORIES)) {
-      const filtered = assets.filter(asset => 
-        asset.toLowerCase().includes(searchLower)
-      );
+      const filtered = assets.filter(asset => {
+        const matches = !assetSearch || asset.toLowerCase().includes(searchLower);
+        if (matches && favorites.includes(asset)) {
+          favs.push(asset);
+        }
+        return matches;
+      });
       if (filtered.length > 0) {
         result[category] = filtered;
       }
     }
-    return result;
-  }, [assetSearch]);
+    return { filteredAssets: result, filteredFavorites: favs };
+  }, [assetSearch, favorites]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -276,17 +282,57 @@ const Calculator: React.FC = () => {
                     </div>
                   </div>
                   <div className="max-h-60 overflow-y-auto">
+                    {/* Favorites section */}
+                    {filteredFavorites.length > 0 && (
+                      <div>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-yellow-500 bg-yellow-500/10 sticky top-0 flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-yellow-500" />
+                          {language === 'fr' ? 'Favoris' : 'Favorites'}
+                        </div>
+                        {filteredFavorites.map(asset => (
+                          <div key={`fav-${asset}`} className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(asset);
+                              }}
+                              className="p-2 hover:bg-accent/50 transition-colors"
+                            >
+                              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                            </button>
+                            <SelectItem value={asset} className="flex-1 pl-0">{asset}</SelectItem>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Categories */}
                     {Object.entries(filteredAssets).map(([category, assets]) => (
                       <div key={category}>
                         <div className="px-2 py-1.5 text-xs font-semibold text-primary bg-primary/10 sticky top-0">
                           {category}
                         </div>
                         {assets.map(asset => (
-                          <SelectItem key={asset} value={asset}>{asset}</SelectItem>
+                          <div key={asset} className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(asset);
+                              }}
+                              className="p-2 hover:bg-accent/50 transition-colors"
+                            >
+                              <Star className={cn(
+                                "w-4 h-4",
+                                isFavorite(asset) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"
+                              )} />
+                            </button>
+                            <SelectItem value={asset} className="flex-1 pl-0">{asset}</SelectItem>
+                          </div>
                         ))}
                       </div>
                     ))}
-                    {Object.keys(filteredAssets).length === 0 && (
+                    {Object.keys(filteredAssets).length === 0 && filteredFavorites.length === 0 && (
                       <div className="p-3 text-sm text-muted-foreground text-center">
                         {t('noAssetFound')}
                       </div>

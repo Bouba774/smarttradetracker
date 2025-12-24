@@ -31,9 +31,11 @@ import {
   Search,
   Loader2,
   Trash2,
+  Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ASSET_CATEGORIES } from '@/data/assets';
+import { useFavoriteAssets } from '@/hooks/useFavoriteAssets';
 import { validateTradeForm, sanitizeText } from '@/lib/tradeValidation';
 import { PENDING_TRADE_KEY } from './Calculator';
 
@@ -90,6 +92,7 @@ const AddTrade: React.FC = () => {
   const { addTrade } = useTrades();
   const { uploadMedia } = useTradeMedia();
   const { setups: suggestedSetups, timeframes: suggestedTimeframes } = useTradeAutocomplete();
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteAssets();
   const locale = language === 'fr' ? fr : enUS;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -190,23 +193,26 @@ const AddTrade: React.FC = () => {
     }
   }, []);
 
-  // Filter assets based on search
-  const filteredAssets = useMemo(() => {
-    if (!assetSearch) return ASSET_CATEGORIES;
+  // Filter assets based on search and organize with favorites first
+  const { filteredAssets, filteredFavorites } = useMemo(() => {
     const searchLower = assetSearch.toLowerCase();
     const result: { [key: string]: string[] } = {};
+    const favs: string[] = [];
     
     for (const [category, assets] of Object.entries(ASSET_CATEGORIES)) {
-      const filtered = assets.filter(asset => 
-        asset.toLowerCase().includes(searchLower)
-      );
+      const filtered = assets.filter(asset => {
+        const matches = !assetSearch || asset.toLowerCase().includes(searchLower);
+        if (matches && favorites.includes(asset)) {
+          favs.push(asset);
+        }
+        return matches;
+      });
       if (filtered.length > 0) {
         result[category] = filtered;
       }
     }
-    return result;
-  }, [assetSearch]);
-
+    return { filteredAssets: result, filteredFavorites: favs };
+  }, [assetSearch, favorites]);
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -587,31 +593,83 @@ const AddTrade: React.FC = () => {
                     />
                   </div>
                   <div className="max-h-60 overflow-y-auto">
+                    {/* Favorites section */}
+                    {filteredFavorites.length > 0 && (
+                      <div>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-yellow-500 bg-yellow-500/10 sticky top-0 flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-yellow-500" />
+                          {language === 'fr' ? 'Favoris' : 'Favorites'}
+                        </div>
+                        {filteredFavorites.map(asset => (
+                          <div key={`fav-${asset}`} className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(asset);
+                              }}
+                              className="p-2 hover:bg-accent/50 transition-colors"
+                            >
+                              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                            </button>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex-1 px-2 py-2 text-left text-sm hover:bg-accent transition-colors",
+                                formData.asset === asset && "bg-accent text-accent-foreground"
+                              )}
+                              onClick={() => {
+                                handleInputChange('asset', asset);
+                                setCustomAsset('');
+                                setAssetSearch('');
+                              }}
+                            >
+                              {asset}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Categories */}
                     {Object.entries(filteredAssets).map(([category, assets]) => (
                       <div key={category}>
                         <div className="px-2 py-1.5 text-xs font-semibold text-primary bg-primary/10 sticky top-0">
                           {category}
                         </div>
                         {assets.map(asset => (
-                          <button
-                            key={asset}
-                            type="button"
-                            className={cn(
-                              "w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors",
-                              formData.asset === asset && "bg-accent text-accent-foreground"
-                            )}
-                            onClick={() => {
-                              handleInputChange('asset', asset);
-                              setCustomAsset('');
-                              setAssetSearch('');
-                            }}
-                          >
-                            {asset}
-                          </button>
+                          <div key={asset} className="flex items-center">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(asset);
+                              }}
+                              className="p-2 hover:bg-accent/50 transition-colors"
+                            >
+                              <Star className={cn(
+                                "w-4 h-4",
+                                isFavorite(asset) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"
+                              )} />
+                            </button>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex-1 px-2 py-2 text-left text-sm hover:bg-accent transition-colors",
+                                formData.asset === asset && "bg-accent text-accent-foreground"
+                              )}
+                              onClick={() => {
+                                handleInputChange('asset', asset);
+                                setCustomAsset('');
+                                setAssetSearch('');
+                              }}
+                            >
+                              {asset}
+                            </button>
+                          </div>
                         ))}
                       </div>
                     ))}
-                    {Object.keys(filteredAssets).length === 0 && (
+                    {Object.keys(filteredAssets).length === 0 && filteredFavorites.length === 0 && (
                       <div className="p-3 text-sm text-muted-foreground text-center">
                         {language === 'fr' ? 'Aucun actif trouvé' : 'No asset found'}
                       </div>
