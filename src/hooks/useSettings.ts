@@ -11,6 +11,8 @@ export interface AppSettings {
   fontSize: 'small' | 'standard' | 'large';
   background: 'default' | 'gradient' | 'dark' | 'light';
   currency: string;
+  defaultCapital: number | null;
+  defaultRiskPercent: number | null;
 }
 
 const defaultSettings: AppSettings = {
@@ -20,6 +22,8 @@ const defaultSettings: AppSettings = {
   fontSize: 'standard',
   background: 'default',
   currency: 'USD',
+  defaultCapital: null,
+  defaultRiskPercent: null,
 };
 
 export const useSettings = () => {
@@ -50,7 +54,7 @@ export const useSettings = () => {
         // First try to get from database
         const { data, error } = await supabase
           .from('user_settings')
-          .select('vibration, sounds, animations, font_size, background, currency')
+          .select('vibration, sounds, animations, font_size, background, currency, default_capital, default_risk_percent')
           .eq('user_id', user.id)
           .single();
 
@@ -66,6 +70,8 @@ export const useSettings = () => {
             fontSize: (data.font_size as AppSettings['fontSize']) ?? defaultSettings.fontSize,
             background: (data.background as AppSettings['background']) ?? defaultSettings.background,
             currency: data.currency ?? defaultSettings.currency,
+            defaultCapital: data.default_capital ?? null,
+            defaultRiskPercent: data.default_risk_percent ?? null,
           };
           setSettings(dbSettings);
           // Also save to localStorage for offline access
@@ -82,6 +88,8 @@ export const useSettings = () => {
               font_size: defaultSettings.fontSize,
               background: defaultSettings.background,
               currency: defaultSettings.currency,
+              default_capital: defaultSettings.defaultCapital,
+              default_risk_percent: defaultSettings.defaultRiskPercent,
             }, { onConflict: 'user_id' });
 
           if (insertError) {
@@ -126,6 +134,8 @@ export const useSettings = () => {
             font_size: newSettings.fontSize,
             background: newSettings.background,
             currency: newSettings.currency,
+            default_capital: newSettings.defaultCapital,
+            default_risk_percent: newSettings.defaultRiskPercent,
           }, { onConflict: 'user_id' });
 
         if (error) {
@@ -161,6 +171,8 @@ export const useSettings = () => {
             font_size: defaultSettings.fontSize,
             background: defaultSettings.background,
             currency: defaultSettings.currency,
+            default_capital: defaultSettings.defaultCapital,
+            default_risk_percent: defaultSettings.defaultRiskPercent,
           }, { onConflict: 'user_id' });
       } catch (e) {
         console.error('Error resetting settings:', e);

@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useFavoriteAssets } from '@/hooks/useFavoriteAssets';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Calculator as CalcIcon, ArrowRight, AlertTriangle, CheckCircle, Send, Search, TrendingUp, TrendingDown, Star } from 'lucide-react';
+import { Calculator as CalcIcon, ArrowRight, AlertTriangle, CheckCircle, Send, Search, TrendingUp, TrendingDown, Star, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +25,7 @@ const Calculator: React.FC = () => {
   const { t, language } = useLanguage();
   const { formatAmount, getCurrencySymbol, currency } = useCurrency();
   const { favorites, toggleFavorite, isFavorite } = useFavoriteAssets();
+  const { settings, updateSetting, isLoaded: settingsLoaded } = useSettings();
   const navigate = useNavigate();
   const [assetSearch, setAssetSearch] = useState('');
 
@@ -36,6 +38,30 @@ const Calculator: React.FC = () => {
     takeProfit: '',
     asset: 'EUR/USD',
   });
+
+  // Load saved defaults when settings are loaded
+  useEffect(() => {
+    if (settingsLoaded) {
+      setFormData(prev => {
+        const newData = { ...prev };
+        if (settings.defaultCapital !== null && prev.capital === '') {
+          newData.capital = settings.defaultCapital.toString();
+        }
+        if (settings.defaultRiskPercent !== null && prev.riskPercent === '') {
+          newData.riskPercent = settings.defaultRiskPercent.toString();
+          // Calculate risk cash if capital is also set
+          const capital = settings.defaultCapital ?? parseFloat(prev.capital);
+          if (capital && settings.defaultRiskPercent) {
+            newData.riskCash = ((capital * settings.defaultRiskPercent) / 100).toFixed(2);
+          }
+        }
+        return newData;
+      });
+      if (settings.defaultRiskPercent !== null) {
+        setLastModifiedRiskField('percent');
+      }
+    }
+  }, [settingsLoaded, settings.defaultCapital, settings.defaultRiskPercent]);
 
   // Track which field was last modified for bidirectional calculation
   const [lastModifiedRiskField, setLastModifiedRiskField] = useState<'percent' | 'cash' | null>(null);
@@ -246,8 +272,29 @@ const Calculator: React.FC = () => {
             {t('calculatorDesc')}
           </p>
         </div>
-        <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
-          <CalcIcon className="w-6 h-6 text-primary-foreground" />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const capital = parseFloat(formData.capital);
+              const risk = parseFloat(formData.riskPercent);
+              if (!capital && !risk) {
+                toast.error(language === 'fr' ? 'Entrez un capital ou un risque à sauvegarder' : 'Enter a capital or risk to save');
+                return;
+              }
+              updateSetting('defaultCapital', capital || null);
+              updateSetting('defaultRiskPercent', risk || null);
+              toast.success(language === 'fr' ? 'Paramètres par défaut sauvegardés' : 'Default settings saved');
+            }}
+            className="gap-1"
+          >
+            <Save className="w-4 h-4" />
+            <span className="hidden sm:inline">{language === 'fr' ? 'Sauvegarder' : 'Save defaults'}</span>
+          </Button>
+          <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
+            <CalcIcon className="w-6 h-6 text-primary-foreground" />
+          </div>
         </div>
       </div>
 
