@@ -1139,6 +1139,8 @@ export type Database = {
           confidential_mode: boolean | null
           created_at: string
           currency: string | null
+          default_capital: number | null
+          default_risk_percent: number | null
           font_size: string | null
           id: string
           known_devices: Json | null
@@ -1160,6 +1162,8 @@ export type Database = {
           confidential_mode?: boolean | null
           created_at?: string
           currency?: string | null
+          default_capital?: number | null
+          default_risk_percent?: number | null
           font_size?: string | null
           id?: string
           known_devices?: Json | null
@@ -1181,6 +1185,8 @@ export type Database = {
           confidential_mode?: boolean | null
           created_at?: string
           currency?: string | null
+          default_capital?: number | null
+          default_risk_percent?: number | null
           font_size?: string | null
           id?: string
           known_devices?: Json | null
