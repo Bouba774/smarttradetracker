@@ -251,37 +251,47 @@ const Calculator: React.FC = () => {
           <h3 className="font-display font-semibold text-foreground">{t('parameters')}</h3>
 
           <div className="space-y-4">
-            {/* Asset Search */}
-            <div className="space-y-2">
-              <Label>{t('searchAssetCalc')}</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder={t('searchPlaceholder')}
-                  value={assetSearch}
-                  onChange={(e) => setAssetSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
+            {/* Asset Selector with integrated search */}
             <div className="space-y-2">
               <Label>{t('asset')}</Label>
-              <Select value={formData.asset} onValueChange={(v) => handleInputChange('asset', v)}>
+              <Select value={formData.asset} onValueChange={(v) => {
+                handleInputChange('asset', v);
+                setAssetSearch('');
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border max-h-80">
-                  {Object.entries(filteredAssets).map(([category, assets]) => (
-                    <div key={category}>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-primary bg-primary/10">
-                        {category}
-                      </div>
-                      {assets.map(asset => (
-                        <SelectItem key={asset} value={asset}>{asset}</SelectItem>
-                      ))}
+                  <div className="p-2 sticky top-0 bg-popover border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder={t('searchPlaceholder')}
+                        value={assetSearch}
+                        onChange={(e) => setAssetSearch(e.target.value)}
+                        className="pl-10 h-8"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
                     </div>
-                  ))}
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {Object.entries(filteredAssets).map(([category, assets]) => (
+                      <div key={category}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-primary bg-primary/10 sticky top-0">
+                          {category}
+                        </div>
+                        {assets.map(asset => (
+                          <SelectItem key={asset} value={asset}>{asset}</SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                    {Object.keys(filteredAssets).length === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        {t('noAssetFound')}
+                      </div>
+                    )}
+                  </div>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

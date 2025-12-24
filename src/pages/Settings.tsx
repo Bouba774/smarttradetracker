@@ -41,7 +41,7 @@ import {
   Vibrate,
   Volume2,
   Sparkles,
-  Image,
+  
   RotateCcw,
   Coins,
   Focus,
@@ -267,12 +267,6 @@ const Settings: React.FC = () => {
     { id: 'large', label: language === 'fr' ? 'Grande' : 'Large' },
   ];
 
-  const backgrounds = [
-    { id: 'default', label: language === 'fr' ? 'Par défaut' : 'Default' },
-    { id: 'gradient', label: 'Gradient' },
-    { id: 'dark', label: language === 'fr' ? 'Sombre uni' : 'Solid dark' },
-    { id: 'light', label: language === 'fr' ? 'Clair uni' : 'Solid light' },
-  ];
 
   return (
     <div className="py-4 max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto space-y-6">
@@ -473,31 +467,6 @@ const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* Background Selector */}
-      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '300ms' }}>
-        <div className="flex items-center gap-3 mb-4">
-          <Image className="w-5 h-5 text-primary" />
-          <h3 className="font-display font-semibold text-foreground">
-            {t('background')}
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {backgrounds.map((bg) => (
-            <button
-              key={bg.id}
-              onClick={() => handleUpdateSetting('background', bg.id as AppSettings['background'])}
-              className={cn(
-                "p-4 rounded-lg border transition-all text-center",
-                settings.background === bg.id
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
-              )}
-            >
-              <span className="font-medium text-sm">{bg.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Focus Mode Settings */}
       <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '350ms' }}>
