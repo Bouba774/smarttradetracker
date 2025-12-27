@@ -337,19 +337,22 @@ const Calculator: React.FC = () => {
                           {language === 'fr' ? 'Favoris' : 'Favorites'}
                         </div>
                         {filteredFavorites.map(asset => (
-                          <div key={`fav-${asset}`} className="flex items-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(asset);
-                              }}
-                              className="p-2 hover:bg-accent/50 transition-colors"
-                            >
-                              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                            </button>
-                            <SelectItem value={asset} className="flex-1 pl-0">{asset}</SelectItem>
-                          </div>
+                          <SelectItem key={`fav-${asset}`} value={asset} className="pl-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  toggleFavorite(asset);
+                                }}
+                                className="hover:scale-110 transition-transform"
+                              >
+                                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                              </button>
+                              <span>{asset}</span>
+                            </div>
+                          </SelectItem>
                         ))}
                       </div>
                     )}
@@ -360,22 +363,25 @@ const Calculator: React.FC = () => {
                           {category}
                         </div>
                         {assets.map(asset => (
-                          <div key={asset} className="flex items-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(asset);
-                              }}
-                              className="p-2 hover:bg-accent/50 transition-colors"
-                            >
-                              <Star className={cn(
-                                "w-4 h-4",
-                                isFavorite(asset) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"
-                              )} />
-                            </button>
-                            <SelectItem value={asset} className="flex-1 pl-0">{asset}</SelectItem>
-                          </div>
+                          <SelectItem key={asset} value={asset} className="pl-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  toggleFavorite(asset);
+                                }}
+                                className="hover:scale-110 transition-transform"
+                              >
+                                <Star className={cn(
+                                  "w-4 h-4",
+                                  isFavorite(asset) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground"
+                                )} />
+                              </button>
+                              <span>{asset}</span>
+                            </div>
+                          </SelectItem>
                         ))}
                       </div>
                     ))}
