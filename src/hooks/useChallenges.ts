@@ -1,7 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTrades } from './useTrades';
+import { useTrades, Trade } from './useTrades';
+import { useSelfSabotage } from './useSelfSabotage';
+import { useDisciplineScore } from './useDisciplineScore';
+import { 
+  DISCIPLINE_CHALLENGE_DEFINITIONS, 
+  DISCIPLINE_USER_LEVELS, 
+  DISCIPLINE_REWARD_CHESTS,
+  DisciplineChallengeDefinition,
+  ChallengeCategory,
+  CHALLENGE_CATEGORIES,
+  RARITY_COLORS
+} from '@/data/disciplineChallenges';
 
 export interface UserChallenge {
   id: string;
@@ -17,6 +28,7 @@ export interface UserChallenge {
   updated_at: string;
 }
 
+// Legacy interface for backwards compatibility
 export interface ChallengeDefinition {
   id: string;
   title: string;
@@ -31,177 +43,54 @@ export interface ChallengeDefinition {
   calculateProgress: (trades: any[], stats: any) => number;
 }
 
-export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
-  // Easy
-  {
-    id: 'first_trade',
-    title: 'Premier Pas',
-    titleEn: 'First Step',
-    description: 'Enregistrez votre premier trade',
-    descriptionEn: 'Record your first trade',
-    target: 1,
-    difficulty: 'easy',
-    reward: '🎯 Badge Premier Trade',
-    points: 10,
-    icon: 'Target',
-    calculateProgress: (trades) => trades.length
-  },
-  {
-    id: 'active_week',
-    title: 'Semaine Active',
-    titleEn: 'Active Week',
-    description: 'Tradez 5 jours différents',
-    descriptionEn: 'Trade on 5 different days',
-    target: 5,
-    difficulty: 'easy',
-    reward: '🔥 Badge Régularité',
-    points: 25,
-    icon: 'Flame',
-    calculateProgress: (trades) => {
-      const days = new Set(trades.map(t => new Date(t.trade_date).toDateString()));
-      return days.size;
-    }
-  },
-  {
-    id: 'ten_trades',
-    title: 'Débutant Actif',
-    titleEn: 'Active Beginner',
-    description: 'Atteignez 10 trades enregistrés',
-    descriptionEn: 'Record 10 trades',
-    target: 10,
-    difficulty: 'easy',
-    reward: '⭐ Badge Discipline',
-    points: 30,
-    icon: 'Star',
-    calculateProgress: (trades) => trades.length
-  },
-  // Medium challenges
-  {
-    id: 'winning_streak',
-    title: 'Série Gagnante',
-    titleEn: 'Winning Streak',
-    description: 'Enchaînez 5 trades gagnants',
-    descriptionEn: 'Win 5 trades in a row',
-    target: 5,
-    difficulty: 'medium',
-    reward: '📈 Badge Momentum',
-    points: 50,
-    icon: 'TrendingUp',
-    calculateProgress: (trades) => {
-      let maxStreak = 0;
-      let currentStreak = 0;
-      trades.slice().reverse().forEach(t => {
-        if (t.result === 'win') {
-          currentStreak++;
-          maxStreak = Math.max(maxStreak, currentStreak);
-        } else if (t.result === 'loss') {
-          currentStreak = 0;
-        }
-      });
-      return maxStreak;
-    }
-  },
-  {
-    id: 'fifty_trades',
-    title: 'Trader Confirmé',
-    titleEn: 'Confirmed Trader',
-    description: 'Atteignez 50 trades enregistrés',
-    descriptionEn: 'Record 50 trades',
-    target: 50,
-    difficulty: 'medium',
-    reward: '🛡️ Badge Expérience',
-    points: 75,
-    icon: 'Shield',
-    calculateProgress: (trades) => trades.length
-  },
-  {
-    id: 'winrate_55',
-    title: 'Performance Stable',
-    titleEn: 'Stable Performance',
-    description: 'Maintenez un winrate > 55% sur 20 trades',
-    descriptionEn: 'Keep winrate > 55% over 20 trades',
-    target: 20,
-    difficulty: 'medium',
-    reward: '⚡ Badge Performance',
-    points: 100,
-    icon: 'Zap',
-    calculateProgress: (trades, stats) => {
-      const closedTrades = trades.filter(t => t.result !== 'pending').length;
-      if (closedTrades >= 20 && stats.winrate > 55) {
-        return 20;
-      }
-      return Math.min(closedTrades, 19);
-    }
-  },
-  // Hard
-  {
-    id: 'centurion',
-    title: 'Centurion',
-    titleEn: 'Centurion',
-    description: 'Atteignez 100 trades enregistrés',
-    descriptionEn: 'Record 100 trades',
-    target: 100,
-    difficulty: 'hard',
-    reward: '🏅 Badge Expérience',
-    points: 150,
-    icon: 'Medal',
-    calculateProgress: (trades) => trades.length
-  },
-  {
-    id: 'winrate_elite',
-    title: 'Winrate Elite',
-    titleEn: 'Elite Winrate',
-    description: 'Maintenez un winrate > 60% sur 50 trades',
-    descriptionEn: 'Keep winrate > 60% over 50 trades',
-    target: 50,
-    difficulty: 'hard',
-    reward: '🏆 Badge Excellence',
-    points: 200,
-    icon: 'Trophy',
-    calculateProgress: (trades, stats) => {
-      const closedTrades = trades.filter(t => t.result !== 'pending').length;
-      if (closedTrades >= 50 && stats.winrate > 60) {
-        return 50;
-      }
-      return Math.min(closedTrades, 49);
-    }
-  },
-  // Expert
-  {
-    id: 'legend',
-    title: 'Légende du Trading',
-    titleEn: 'Trading Legend',
-    description: 'Atteignez 1000 trades avec un winrate > 55%',
-    descriptionEn: 'Record 1000 trades with winrate > 55%',
-    target: 1000,
-    difficulty: 'expert',
-    reward: '👑 Titre Légende',
-    points: 500,
-    icon: 'Crown',
-    calculateProgress: (trades, stats) => {
-      if (stats.winrate > 55) {
-        return trades.length;
-      }
-      return Math.min(trades.length, 999);
-    }
-  },
-];
+// Convert new format to legacy format for compatibility
+const convertToLegacyFormat = (def: DisciplineChallengeDefinition): ChallengeDefinition => ({
+  id: def.id,
+  title: def.title.fr,
+  titleEn: def.title.en,
+  description: def.description.fr,
+  descriptionEn: def.description.en,
+  target: def.target,
+  difficulty: def.difficulty,
+  reward: def.reward.fr,
+  points: def.points,
+  icon: def.icon,
+  calculateProgress: def.calculateProgress,
+});
 
-export const USER_LEVELS = [
-  { level: 1, title: 'Débutant', titleEn: 'Beginner', minPoints: 0, badge: '🌱' },
-  { level: 2, title: 'Apprenti', titleEn: 'Apprentice', minPoints: 100, badge: '📚' },
-  { level: 3, title: 'Trader', titleEn: 'Trader', minPoints: 300, badge: '📊' },
-  { level: 4, title: 'Confirmé', titleEn: 'Confirmed', minPoints: 600, badge: '💪' },
-  { level: 5, title: 'Expert', titleEn: 'Expert', minPoints: 1000, badge: '🎯' },
-  { level: 6, title: 'Maître', titleEn: 'Master', minPoints: 2000, badge: '⭐' },
-  { level: 7, title: 'Champion', titleEn: 'Champion', minPoints: 5000, badge: '🏆' },
-  { level: 8, title: 'Légende', titleEn: 'Legend', minPoints: 10000, badge: '👑' },
-];
+// Export legacy format for backwards compatibility
+export const CHALLENGE_DEFINITIONS = DISCIPLINE_CHALLENGE_DEFINITIONS.map(convertToLegacyFormat);
+export const USER_LEVELS = DISCIPLINE_USER_LEVELS;
+
+export interface ChallengeWithProgress extends DisciplineChallengeDefinition {
+  progress: number;
+  completed: boolean;
+  userChallenge?: UserChallenge;
+  isNewlyCompleted: boolean;
+  popupShown: boolean;
+  wasReset: boolean;
+}
+
+export interface RewardChestWithStatus {
+  id: string;
+  name: { fr: string; en: string };
+  description: { fr: string; en: string };
+  requiredDays: number;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  icon: string;
+  reward: { type: 'badge' | 'title' | 'points'; value: string | number };
+  unlocked: boolean;
+  progress: number;
+}
 
 export const useChallenges = () => {
   const { user, profile, updateProfile } = useAuth();
   const { trades, stats } = useTrades();
   const queryClient = useQueryClient();
+  
+  // Use discipline hooks for reset detection
+  const sabotageAnalysis = useSelfSabotage(trades);
+  const disciplineScore = useDisciplineScore(trades);
 
   const challengesQuery = useQuery({
     queryKey: ['user_challenges', user?.id],
@@ -219,38 +108,77 @@ export const useChallenges = () => {
     enabled: !!user
   });
 
+  // Detect if there's been self-sabotage that should reset streak challenges
+  const hasSabotage = sabotageAnalysis.sabotageScore > 30 || 
+    sabotageAnalysis.alerts.some(a => a.severity === 'danger');
+
   // Calculate progress for all challenges
-  const challengesWithProgress = CHALLENGE_DEFINITIONS.map(def => {
+  const challengesWithProgress: ChallengeWithProgress[] = DISCIPLINE_CHALLENGE_DEFINITIONS.map(def => {
     const userChallenge = challengesQuery.data?.find(c => c.challenge_id === def.id);
-    const calculatedProgress = stats ? def.calculateProgress(trades, stats) : 0;
+    const calculatedProgress = def.calculateProgress(trades);
     const progress = Math.min(calculatedProgress, def.target);
     const completed = progress >= def.target;
-    // Check if popup was already shown - this is the key for preventing duplicate popups
+    
     const popupAlreadyShown = userChallenge?.popup_shown === true;
     const wasAlreadyCompleted = userChallenge?.completed === true;
+    
+    // Check if streak challenge should be reset due to sabotage
+    const wasReset = def.isStreak && hasSabotage && !wasAlreadyCompleted;
 
     return {
       ...def,
-      progress,
-      completed,
+      progress: wasReset ? 0 : progress,
+      completed: wasReset ? false : completed,
       userChallenge,
-      // Only show popup if: completed now, not previously completed in DB, and popup never shown
-      isNewlyCompleted: completed && !wasAlreadyCompleted && !popupAlreadyShown,
+      isNewlyCompleted: completed && !wasAlreadyCompleted && !popupAlreadyShown && !wasReset,
       popupShown: popupAlreadyShown,
+      wasReset,
     };
   });
 
+  // Group challenges by category
+  const challengesByCategory = (Object.keys(CHALLENGE_CATEGORIES) as ChallengeCategory[]).reduce(
+    (acc, category) => {
+      acc[category] = challengesWithProgress.filter(c => c.category === category);
+      return acc;
+    },
+    {} as Record<ChallengeCategory, ChallengeWithProgress[]>
+  );
+
+  // Calculate reward chests status
+  const currentDisciplineStreak = disciplineScore.streak;
+  const rewardChests: RewardChestWithStatus[] = DISCIPLINE_REWARD_CHESTS.map(chest => ({
+    ...chest,
+    unlocked: currentDisciplineStreak >= chest.requiredDays,
+    progress: Math.min((currentDisciplineStreak / chest.requiredDays) * 100, 100),
+  }));
+
   // Sync challenges with database
   const syncChallenge = useMutation({
-    mutationFn: async (challenge: typeof challengesWithProgress[0]) => {
+    mutationFn: async (challenge: ChallengeWithProgress) => {
       if (!user) throw new Error('Not authenticated');
 
       const existingChallenge = challenge.userChallenge;
 
       if (existingChallenge) {
-        // Update existing - NEVER reset popup_shown to false once it's true
         const shouldMarkPopupShown = challenge.completed || existingChallenge.popup_shown;
         const isNewlyCompleted = challenge.completed && !existingChallenge.completed;
+        
+        // Handle reset for streak challenges
+        if (challenge.wasReset && existingChallenge.progress > 0) {
+          const { error } = await supabase
+            .from('user_challenges')
+            .update({
+              progress: 0,
+              completed: false,
+              completed_at: null,
+              points_earned: 0,
+            })
+            .eq('id', existingChallenge.id);
+
+          if (error) throw error;
+          return;
+        }
         
         const { error } = await supabase
           .from('user_challenges')
@@ -265,10 +193,9 @@ export const useChallenges = () => {
 
         if (error) throw error;
 
-        // If newly completed (first time), update user points
         if (isNewlyCompleted && !existingChallenge.points_earned) {
           const newPoints = (profile?.total_points || 0) + challenge.points;
-          const newLevel = USER_LEVELS.reduce((acc, lvl) => 
+          const newLevel = DISCIPLINE_USER_LEVELS.reduce((acc, lvl) => 
             newPoints >= lvl.minPoints ? lvl.level : acc
           , 1);
 
@@ -278,7 +205,6 @@ export const useChallenges = () => {
           });
         }
       } else {
-        // Create new
         const { error } = await supabase
           .from('user_challenges')
           .insert({
@@ -294,10 +220,9 @@ export const useChallenges = () => {
 
         if (error) throw error;
 
-        // If completed on first create, update user points
         if (challenge.completed) {
           const newPoints = (profile?.total_points || 0) + challenge.points;
-          const newLevel = USER_LEVELS.reduce((acc, lvl) => 
+          const newLevel = DISCIPLINE_USER_LEVELS.reduce((acc, lvl) => 
             newPoints >= lvl.minPoints ? lvl.level : acc
           , 1);
 
@@ -313,7 +238,6 @@ export const useChallenges = () => {
     }
   });
 
-  // Sync all challenges
   const syncAllChallenges = async () => {
     for (const challenge of challengesWithProgress) {
       await syncChallenge.mutateAsync(challenge);
@@ -321,19 +245,31 @@ export const useChallenges = () => {
   };
 
   // Get current level info
-  const currentLevel = USER_LEVELS.find((l, i) => 
+  const currentLevel = DISCIPLINE_USER_LEVELS.find((l, i) => 
     (profile?.total_points || 0) >= l.minPoints && 
-    (USER_LEVELS[i + 1] ? (profile?.total_points || 0) < USER_LEVELS[i + 1].minPoints : true)
-  ) || USER_LEVELS[0];
+    (DISCIPLINE_USER_LEVELS[i + 1] ? (profile?.total_points || 0) < DISCIPLINE_USER_LEVELS[i + 1].minPoints : true)
+  ) || DISCIPLINE_USER_LEVELS[0];
 
-  const nextLevel = USER_LEVELS[USER_LEVELS.indexOf(currentLevel) + 1];
+  const nextLevel = DISCIPLINE_USER_LEVELS[DISCIPLINE_USER_LEVELS.indexOf(currentLevel) + 1];
   
   const progressToNextLevel = nextLevel 
     ? (((profile?.total_points || 0) - currentLevel.minPoints) / (nextLevel.minPoints - currentLevel.minPoints)) * 100 
     : 100;
 
+  const completedCount = challengesWithProgress.filter(c => c.completed).length;
+  const totalChallenges = challengesWithProgress.length;
+
   return {
+    // New discipline-based data
     challenges: challengesWithProgress,
+    challengesByCategory,
+    categories: CHALLENGE_CATEGORIES,
+    rewardChests,
+    disciplineStreak: currentDisciplineStreak,
+    hasSabotage,
+    sabotageAlerts: sabotageAnalysis.alerts,
+    
+    // Legacy compatibility
     userChallenges: challengesQuery.data || [],
     isLoading: challengesQuery.isLoading,
     currentLevel,
@@ -342,6 +278,11 @@ export const useChallenges = () => {
     totalPoints: profile?.total_points || 0,
     syncAllChallenges,
     syncChallenge,
-    USER_LEVELS
+    completedCount,
+    totalChallenges,
+    
+    // Constants
+    USER_LEVELS: DISCIPLINE_USER_LEVELS,
+    RARITY_COLORS,
   };
 };
