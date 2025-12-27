@@ -1,350 +1,600 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTrades } from '@/hooks/useTrades';
-import { useJournalEntries } from '@/hooks/useJournalEntries';
-import { useCurrency } from '@/hooks/useCurrency';
-import { usePDFExport } from '@/hooks/usePDFExport';
+import { useLanguage, Language } from '@/contexts/LanguageContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useFeedback } from '@/hooks/useFeedback';
-import { useSettings } from '@/hooks/useSettings';
-import { PDFExportDialog } from '@/components/PDFExportDialog';
-import MTTradeImporter from '@/components/MTTradeImporter';
-import { ProfileTab, TradingTab, SessionsTab, SecurityTab } from '@/components/settings';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { useTradeFocus } from '@/hooks/useTradeFocus';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { formatPrice, formatPriceForExport } from '@/lib/utils';
+import { useSettings, AppSettings } from '@/hooks/useSettings';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import {
   Settings as SettingsIcon,
-  User,
-  TrendingUp,
-  Clock,
-  Shield,
-  LogOut,
-  Trash2,
-  AlertTriangle,
-  Download,
-  FileJson,
-  FileSpreadsheet,
+  Moon,
+  Sun,
+  Palette,
+  Languages,
+  Type,
+  Vibrate,
+  Volume2,
+  Sparkles,
+  
   RotateCcw,
-  Save,
+  Coins,
+  Focus,
+  Target,
+  Shield,
+  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+import { CURRENCIES, getCurrencyLabel } from '@/data/currencies';
+import { SecuritySettings } from '@/components/SecuritySettings';
+
+// Language Selector Component with Search
+interface LanguageSelectorProps {
+  language: Language;
+  languages: typeof import('@/lib/i18n').LANGUAGES;
+  onLanguageChange: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const LanguageSelector: React.FC<LanguageSelectorProps> = ({ 
+  language, 
+  languages, 
+  onLanguageChange, 
+  t 
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const selectedLang = languages.find(l => l.code === language);
+  
+  const filteredLanguages = languages.filter(lang => 
+    lang.name.toLowerCase().includes(search.toLowerCase()) ||
+    lang.nativeName.toLowerCase().includes(search.toLowerCase()) ||
+    lang.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '150ms' }}>
+      <div className="flex items-center gap-3 mb-4">
+        <Languages className="w-5 h-5 text-primary" />
+        <h3 className="font-display font-semibold text-foreground">
+          {t('language')}
+        </h3>
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between h-11 bg-secondary/30 border-border hover:bg-secondary/50"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{selectedLang?.flag}</span>
+              <span className="font-medium">{selectedLang?.nativeName}</span>
+            </div>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-50" align="start">
+          <Command className="bg-popover">
+            <CommandInput 
+              placeholder={language === 'fr' ? 'Rechercher une langue...' : 'Search language...'} 
+              value={search}
+              onValueChange={setSearch}
+              className="h-10"
+            />
+            <CommandList className="max-h-64">
+              <CommandEmpty>
+                {language === 'fr' ? 'Aucune langue trouvée.' : 'No language found.'}
+              </CommandEmpty>
+              <CommandGroup>
+                {filteredLanguages.map((lang) => (
+                  <CommandItem
+                    key={lang.code}
+                    value={`${lang.name} ${lang.nativeName} ${lang.code}`}
+                    onSelect={() => {
+                      onLanguageChange(lang.code);
+                      setOpen(false);
+                      setSearch('');
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        language === lang.code ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="text-lg mr-2">{lang.flag}</span>
+                    <span className="font-medium">{lang.nativeName}</span>
+                    <span className="text-muted-foreground text-xs ml-2">({lang.name})</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <p className="text-xs text-muted-foreground mt-2">
+        {language === 'fr' 
+          ? 'Sélectionnez votre langue préférée pour l\'interface' 
+          : 'Select your preferred language for the interface'}
+      </p>
+    </div>
+  );
+};
 
 const Settings: React.FC = () => {
-  const navigate = useNavigate();
-  const { language, t, setLanguage } = useLanguage();
-  const { user, profile, signOut, refreshProfile } = useAuth();
-  const { trades } = useTrades();
-  const { entries: journalEntries } = useJournalEntries();
-  const { currency, convertFromBase } = useCurrency();
-  const { exportToPDF } = usePDFExport();
+  const { language, setLanguage, t, languages } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const { triggerFeedback } = useFeedback();
-  const { resetSettings } = useSettings();
+  const { user } = useAuth();
+  const tradeFocus = useTradeFocus();
+  const { settings, updateSetting: updateSettingHook, resetSettings, defaultSettings } = useSettings();
+  const [primaryColor, setPrimaryColor] = useState(() => {
+    return localStorage.getItem('smart-trade-tracker-primary-color') || 'blue';
+  });
 
-  const [activeTab, setActiveTab] = useState('profile');
-  const [isDeletingData, setIsDeletingData] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  const handleExportPDF = async (filteredTrades: any[], profileData: any, periodLabel: string) => {
-    if (filteredTrades.length === 0) {
-      toast.error(t('noDataToExport'));
-      return;
+  const handleUpdateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    updateSettingHook(key, value);
+    triggerFeedback('click');
+    
+    // Apply font size
+    if (key === 'fontSize') {
+      const root = document.documentElement;
+      switch (value) {
+        case 'small':
+          root.style.fontSize = '14px';
+          break;
+        case 'standard':
+          root.style.fontSize = '16px';
+          break;
+        case 'large':
+          root.style.fontSize = '18px';
+          break;
+      }
     }
-    setIsExporting(true);
-    await exportToPDF(filteredTrades, profileData, periodLabel);
-    setIsExporting(false);
+
+    toast.success(t('settingUpdated'));
   };
 
-  const handleExportJSON = async () => {
-    if (trades.length === 0 && journalEntries.length === 0) {
-      toast.error(t('noDataToExport'));
-      return;
-    }
-    setIsExporting(true);
+  const handleColorChange = (color: string) => {
+    setPrimaryColor(color);
+    localStorage.setItem('smart-trade-tracker-primary-color', color);
     triggerFeedback('click');
-    try {
-      const convertedTrades = trades.map(trade => ({
-        ...trade,
-        entry_price: formatPriceForExport(trade.entry_price),
-        exit_price: formatPriceForExport(trade.exit_price),
-        stop_loss: formatPriceForExport(trade.stop_loss),
-        take_profit: formatPriceForExport(trade.take_profit),
-        profit_loss: trade.profit_loss ? convertFromBase(trade.profit_loss) : null,
-        currency: currency,
-      }));
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        currency: currency,
-        profile: profile ? { nickname: profile.nickname, level: profile.level, total_points: profile.total_points } : null,
-        trades: convertedTrades,
-        journalEntries: journalEntries,
-      };
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `smart-trade-tracker-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      triggerFeedback('success');
-      toast.success(t('exportSuccess'));
-    } catch (error) {
-      triggerFeedback('error');
-      toast.error(t('exportError'));
-    } finally {
-      setIsExporting(false);
+    
+    // Apply color to CSS variables
+    const root = document.documentElement;
+    const colorMap: Record<string, string> = {
+      blue: '217 91% 60%',
+      green: '142 71% 45%',
+      red: '0 84% 60%',
+      purple: '263 70% 50%',
+      orange: '25 95% 53%',
+      cyan: '189 94% 43%',
+    };
+    
+    if (colorMap[color]) {
+      root.style.setProperty('--primary', colorMap[color]);
     }
-  };
-
-  const handleExportCSV = async () => {
-    if (trades.length === 0) {
-      toast.error(t('noDataToExport'));
-      return;
-    }
-    setIsExporting(true);
-    triggerFeedback('click');
-    try {
-      const headers = ['Date', 'Asset', 'Direction', 'Entry Price', 'Exit Price', 'Stop Loss', 'Take Profit', 'Lot Size', `PnL (${currency})`, 'Result', 'Setup', 'Emotions', 'Notes'];
-      const rows = trades.map(trade => [
-        trade.trade_date, trade.asset, trade.direction,
-        formatPrice(trade.entry_price), trade.exit_price ? formatPrice(trade.exit_price) : '',
-        trade.stop_loss ? formatPrice(trade.stop_loss) : '', trade.take_profit ? formatPrice(trade.take_profit) : '',
-        trade.lot_size, trade.profit_loss ? convertFromBase(trade.profit_loss).toFixed(2) : '',
-        trade.result || '', trade.setup || '', trade.emotions || '', trade.notes?.replace(/"/g, '""') || '',
-      ]);
-      const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `smart-trade-tracker-trades-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      triggerFeedback('success');
-      toast.success(t('exportSuccess'));
-    } catch (error) {
-      triggerFeedback('error');
-      toast.error(t('exportError'));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleDeleteAllData = async () => {
-    if (!user) return;
-    setIsDeletingData(true);
-    triggerFeedback('click');
-    try {
-      await supabase.from('trades').delete().eq('user_id', user.id);
-      await supabase.from('journal_entries').delete().eq('user_id', user.id);
-      await supabase.from('user_challenges').delete().eq('user_id', user.id);
-      localStorage.removeItem('smart-trade-tracker-recordings');
-      await supabase.from('profiles').update({ total_points: 0, level: 1 }).eq('user_id', user.id);
-      await refreshProfile();
-      triggerFeedback('success');
-      toast.success(t('dataDeleted'));
-    } catch (error) {
-      triggerFeedback('error');
-      toast.error(t('error'));
-    } finally {
-      setIsDeletingData(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user) return;
-    setIsDeletingAccount(true);
-    triggerFeedback('click');
-    try {
-      await handleDeleteAllData();
-      await supabase.from('profiles').delete().eq('user_id', user.id);
-      await signOut();
-      triggerFeedback('success');
-      toast.success(t('accountDeleted'));
-    } catch (error) {
-      triggerFeedback('error');
-      toast.error(t('error'));
-    } finally {
-      setIsDeletingAccount(false);
-    }
+    
+    toast.success(t('colorUpdated'));
   };
 
   const handleReset = async () => {
     await resetSettings();
+    setPrimaryColor('blue');
     localStorage.removeItem('smart-trade-tracker-primary-color');
     document.documentElement.style.fontSize = '16px';
     document.documentElement.style.removeProperty('--primary');
+    setTheme('dark');
     triggerFeedback('success');
+    
     toast.success(t('interfaceReset'));
   };
 
+  const handleLanguageChange = async (lang: Language) => {
+    setLanguage(lang);
+    triggerFeedback('click');
+    
+    // Sync to database if user is logged in
+    if (user) {
+      try {
+        const { error } = await supabase
+          .from('user_settings')
+          .upsert({
+            user_id: user.id,
+            language: lang,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+        
+        if (error) {
+          console.error('Error syncing language:', error);
+        }
+      } catch (e) {
+        console.error('Error syncing language:', e);
+      }
+    }
+    
+    toast.success(t('settingUpdated'));
+  };
+
+  const colors = [
+    { id: 'blue', label: language === 'fr' ? 'Bleu' : 'Blue', class: 'bg-blue-500' },
+    { id: 'green', label: language === 'fr' ? 'Vert' : 'Green', class: 'bg-green-500' },
+    { id: 'red', label: language === 'fr' ? 'Rouge' : 'Red', class: 'bg-red-500' },
+    { id: 'purple', label: language === 'fr' ? 'Violet' : 'Purple', class: 'bg-purple-500' },
+    { id: 'orange', label: language === 'fr' ? 'Orange' : 'Orange', class: 'bg-orange-500' },
+    { id: 'cyan', label: language === 'fr' ? 'Cyan' : 'Cyan', class: 'bg-cyan-500' },
+  ];
+
+  const themes = [
+    { id: 'light' as const, label: t('light'), icon: Sun },
+    { id: 'dark' as const, label: t('dark'), icon: Moon },
+  ];
+
+  const fontSizes = [
+    { id: 'small', label: language === 'fr' ? 'Petite' : 'Small' },
+    { id: 'standard', label: 'Standard' },
+    { id: 'large', label: language === 'fr' ? 'Grande' : 'Large' },
+  ];
+
+
   return (
-    <div className="py-3 max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto pb-20">
-      {/* Header compact */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="py-4 max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-xl md:text-2xl font-bold text-foreground">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
             {t('settings')}
           </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {language === 'fr' ? 'Personnalisez votre expérience' : 'Customize your experience'}
+          </p>
         </div>
-        <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
-          <SettingsIcon className="w-5 h-5 text-primary-foreground" />
+        <div className="w-12 h-12 rounded-lg bg-gradient-primary flex items-center justify-center shadow-neon">
+          <SettingsIcon className="w-6 h-6 text-primary-foreground" />
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-10 mb-4">
-          <TabsTrigger value="profile" className="gap-1 text-xs px-1">
-            <User className="w-4 h-4" />
-            <span className="hidden sm:inline">{language === 'fr' ? 'Profil' : 'Profile'}</span>
-          </TabsTrigger>
-          <TabsTrigger value="trading" className="gap-1 text-xs px-1">
-            <TrendingUp className="w-4 h-4" />
-            <span className="hidden sm:inline">Trading</span>
-          </TabsTrigger>
-          <TabsTrigger value="sessions" className="gap-1 text-xs px-1">
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">Sessions</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-1 text-xs px-1">
-            <Shield className="w-4 h-4" />
-            <span className="hidden sm:inline">{language === 'fr' ? 'Sécurité' : 'Security'}</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Currency Selection */}
+      <div className="glass-card p-6 animate-fade-in">
+        <div className="flex items-center gap-3 mb-4">
+          <Coins className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {language === 'fr' ? 'Devise Principale' : 'Main Currency'}
+          </h3>
+        </div>
+        <Select 
+          value={settings.currency} 
+          onValueChange={(value) => handleUpdateSetting('currency', value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={language === 'fr' ? 'Sélectionner une devise' : 'Select currency'} />
+          </SelectTrigger>
+          <SelectContent className="bg-popover border-border max-h-80">
+            {CURRENCIES.map((currency) => (
+              <SelectItem key={currency.code} value={currency.code}>
+                {getCurrencyLabel(currency, language)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground mt-2">
+          {language === 'fr' 
+            ? 'Toutes les valeurs seront converties automatiquement avec les taux de change actuels' 
+            : 'All values will be automatically converted using current exchange rates'}
+        </p>
+      </div>
 
-        <TabsContent value="profile" className="space-y-3 mt-0">
-          <ProfileTab onSettingChange={() => setHasUnsavedChanges(true)} />
+      {/* Theme Mode */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '50ms' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Moon className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {t('displayMode')}
+          </h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {themes.map((themeItem) => {
+            const Icon = themeItem.icon;
+            return (
+              <button
+                key={themeItem.id}
+                onClick={() => {
+                  setTheme(themeItem.id);
+                  triggerFeedback('click');
+                }}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-lg border transition-all",
+                  theme === themeItem.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                <Icon className="w-6 h-6" />
+                <span className="text-xs font-medium">{themeItem.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Primary Color */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '100ms' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Palette className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {t('primaryColor')}
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {colors.map((color) => (
+            <button
+              key={color.id}
+              onClick={() => handleColorChange(color.id)}
+              className={cn(
+                "w-12 h-12 rounded-lg transition-all",
+                color.class,
+                primaryColor === color.id
+                  ? "ring-4 ring-offset-2 ring-offset-background ring-primary scale-110"
+                  : "opacity-70 hover:opacity-100"
+              )}
+              title={color.label}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Language */}
+      <LanguageSelector 
+        language={language}
+        languages={languages}
+        onLanguageChange={handleLanguageChange}
+        t={t}
+      />
+
+      {/* Font Size */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '200ms' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Type className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {t('fontSize')}
+          </h3>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {fontSizes.map((size) => (
+            <button
+              key={size.id}
+              onClick={() => handleUpdateSetting('fontSize', size.id as AppSettings['fontSize'])}
+              className={cn(
+                "p-4 rounded-lg border transition-all text-center",
+                settings.fontSize === size.id
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-secondary/30 text-muted-foreground hover:border-primary/50"
+              )}
+            >
+              <span 
+                className="font-medium"
+                style={{ 
+                  fontSize: size.id === 'small' ? '12px' : size.id === 'large' ? '18px' : '14px' 
+                }}
+              >
+                {size.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div className="glass-card p-6 animate-fade-in space-y-6" style={{ animationDelay: '250ms' }}>
+        <h3 className="font-display font-semibold text-foreground">
+          {language === 'fr' ? 'Options' : 'Options'}
+        </h3>
+
+        {/* Vibration */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Vibrate className="w-5 h-5 text-primary" />
+            <Label htmlFor="vibration" className="text-foreground">
+              {t('vibration')}
+            </Label>
+          </div>
+          <Switch
+            id="vibration"
+            checked={settings.vibration}
+            onCheckedChange={(checked) => handleUpdateSetting('vibration', checked)}
+          />
+        </div>
+
+        {/* Sounds */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Volume2 className="w-5 h-5 text-primary" />
+            <Label htmlFor="sounds" className="text-foreground">
+              {t('sounds')}
+            </Label>
+          </div>
+          <Switch
+            id="sounds"
+            checked={settings.sounds}
+            onCheckedChange={(checked) => handleUpdateSetting('sounds', checked)}
+          />
+        </div>
+
+        {/* Animations */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <Label htmlFor="animations" className="text-foreground">
+              {t('animations')}
+            </Label>
+          </div>
+          <Switch
+            id="animations"
+            checked={settings.animations}
+            onCheckedChange={(checked) => handleUpdateSetting('animations', checked)}
+          />
+        </div>
+      </div>
+
+
+      {/* Focus Mode Settings */}
+      <div className="glass-card p-6 animate-fade-in" style={{ animationDelay: '350ms' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Focus className="w-5 h-5 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">
+            {language === 'fr' ? 'Mode Focus' : 'Focus Mode'}
+          </h3>
+        </div>
+        
+        {/* Enable/Disable Toggle */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <Label className="text-foreground">
+              {language === 'fr' ? 'Activer le mode focus' : 'Enable focus mode'}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {language === 'fr' 
+                ? 'Cache les statistiques et montre uniquement votre plan' 
+                : 'Hides statistics and shows only your plan'}
+            </p>
+          </div>
+          <Switch
+            checked={tradeFocus.isEnabled}
+            onCheckedChange={() => {
+              tradeFocus.toggle();
+              triggerFeedback('click');
+              toast.success(tradeFocus.isEnabled 
+                ? (language === 'fr' ? 'Mode Focus désactivé' : 'Focus Mode disabled')
+                : (language === 'fr' ? 'Mode Focus activé' : 'Focus Mode enabled'));
+            }}
+          />
+        </div>
+
+        {/* Focus Mode Settings */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>{language === 'fr' ? 'Plan de trading' : 'Trading Plan'}</Label>
+            <Textarea
+              value={tradeFocus.tradingPlan}
+              onChange={(e) => tradeFocus.setTradingPlan(e.target.value)}
+              placeholder={language === 'fr' 
+                ? 'Décrivez votre plan de trading...' 
+                : 'Describe your trading plan...'}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
           
-          {/* Export & Import Section */}
-          <div className="glass-card p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Download className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{t('exportData')}</span>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              {language === 'fr' ? 'Objectif du jour' : 'Daily Goal'}
+            </Label>
+            <Input
+              value={tradeFocus.dailyGoal}
+              onChange={(e) => tradeFocus.setDailyGoal(e.target.value)}
+              placeholder={language === 'fr' 
+                ? 'Ex: 2 trades gagnants, +50$' 
+                : 'Ex: 2 winning trades, +$50'}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>{language === 'fr' ? 'Max trades/jour' : 'Max trades/day'}</Label>
+              <Input
+                type="number"
+                value={tradeFocus.maxTrades}
+                onChange={(e) => tradeFocus.setMaxTrades(Number(e.target.value))}
+                min={1}
+              />
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={handleExportJSON} disabled={isExporting}>
-                <FileJson className="w-3 h-3" />
-                JSON
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={handleExportCSV} disabled={isExporting}>
-                <FileSpreadsheet className="w-3 h-3" />
-                CSV
-              </Button>
-              <PDFExportDialog
-                trades={trades}
-                profile={profile ? { nickname: profile.nickname, level: profile.level, total_points: profile.total_points } : null}
-                onExport={handleExportPDF}
-                isExporting={isExporting}
+            <div className="space-y-2">
+              <Label>{language === 'fr' ? 'Perte max ($)' : 'Max loss ($)'}</Label>
+              <Input
+                type="number"
+                value={tradeFocus.maxLoss}
+                onChange={(e) => tradeFocus.setMaxLoss(Number(e.target.value))}
+                min={0}
               />
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* MT Importer */}
-          <div className="glass-card p-3">
-            <MTTradeImporter />
-          </div>
-
-          {/* Logout & Danger Zone */}
-          <div className="glass-card p-3 space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2 h-9 text-sm"
-              onClick={() => { triggerFeedback('click'); signOut(); }}
-            >
-              <LogOut className="w-4 h-4" />
-              {t('signOut')}
-            </Button>
-
-            <div className="border-t border-loss/30 pt-2 mt-2">
-              <div className="flex items-center gap-1 mb-2">
-                <AlertTriangle className="w-3 h-3 text-loss" />
-                <span className="text-xs font-medium text-loss">{t('dangerZone')}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-xs border-loss/30 text-loss hover:bg-loss/10" disabled={isDeletingData}>
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      {language === 'fr' ? 'Données' : 'Data'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('deleteDataConfirm')}</AlertDialogTitle>
-                      <AlertDialogDescription>{t('deleteDataDesc')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteAllData} className="bg-loss hover:bg-loss/90">{t('deleteAll')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="h-8 text-xs" disabled={isDeletingAccount}>
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      {language === 'fr' ? 'Compte' : 'Account'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-loss">{t('deleteAccountConfirm')}</AlertDialogTitle>
-                      <AlertDialogDescription>{t('deleteAccountDesc')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteAccount} className="bg-loss hover:bg-loss/90">{t('deleteAccount')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+      {/* Security Settings */}
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Shield className="w-5 h-5 text-primary" />
+          <h2 className="font-display text-xl font-bold text-foreground">
+            {language === 'fr' ? 'Sécurité Renforcée' : 'Enhanced Security'}
+          </h2>
+        </div>
+        <SecuritySettings />
+        
+        {/* Link to Privacy Center */}
+        <div className="glass-card p-6 mt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display font-semibold text-foreground">
+                {language === 'fr' ? 'Centre de confidentialité' : 'Privacy Center'}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {language === 'fr' 
+                  ? 'Gérez vos données, consentements et appareils de confiance' 
+                  : 'Manage your data, consents and trusted devices'}
+              </p>
             </div>
+            <a
+              href="/privacy-center"
+              className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+            >
+              <Shield className="w-4 h-4" />
+              {language === 'fr' ? 'Accéder' : 'Access'}
+            </a>
           </div>
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="trading" className="mt-0">
-          <TradingTab onSettingChange={() => setHasUnsavedChanges(true)} />
-        </TabsContent>
-
-        <TabsContent value="sessions" className="mt-0">
-          <SessionsTab onSettingChange={() => setHasUnsavedChanges(true)} />
-        </TabsContent>
-
-        <TabsContent value="security" className="mt-0">
-          <SecurityTab onSettingChange={() => setHasUnsavedChanges(true)} />
-        </TabsContent>
-      </Tabs>
-
-      {/* Floating Reset Button */}
-      <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
+      {/* Reset Button */}
+      <div className="glass-card p-6 animate-fade-in mt-6" style={{ animationDelay: '400ms' }}>
         <Button
           variant="outline"
-          size="sm"
-          className="gap-2 shadow-lg bg-background/95 backdrop-blur-sm border-border"
+          className="w-full gap-3 h-12"
           onClick={handleReset}
         >
-          <RotateCcw className="w-4 h-4" />
+          <RotateCcw className="w-5 h-5" />
           {t('resetDisplay')}
         </Button>
       </div>
