@@ -2,6 +2,11 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
+// Session storage key for unlock state - clears when tab closes
+const UNLOCK_SESSION_KEY = 'app_unlocked_session';
+const LOCK_COOLDOWN_KEY = 'pin_lock_cooldown';
+const FAILED_ATTEMPTS_KEY = 'pin_failed_attempts';
+
 interface SecuritySettings {
   confidentialMode: boolean;
 }
@@ -17,6 +22,15 @@ interface SecurityContextType {
   unlockApp: () => void;
   lastActiveTime: number;
   updateLastActiveTime: () => void;
+  // PIN security state
+  isPinConfigured: boolean;
+  autoLockTimeout: number;
+  // Brute force protection
+  failedAttempts: number;
+  setFailedAttempts: (count: number) => void;
+  lockCooldownEnd: number | null;
+  setLockCooldown: (endTime: number) => void;
+  clearLockCooldown: () => void;
 }
 
 const defaultSettings: SecuritySettings = {
@@ -29,139 +43,198 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { user } = useAuth();
   const [settings, setSettings] = useState<SecuritySettings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Start locked by default
   const [lastActiveTime, setLastActiveTime] = useState(Date.now());
+  const [isPinConfigured, setIsPinConfigured] = useState(false);
+  const [autoLockTimeout, setAutoLockTimeout] = useState(0);
+  const [failedAttempts, setFailedAttemptsState] = useState(0);
+  const [lockCooldownEnd, setLockCooldownEnd] = useState<number | null>(null);
+  
   const isSavingRef = useRef(false);
-  const lockCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const autoLockTimeoutRef = useRef<number>(0);
-  const pinEnabledRef = useRef<boolean>(false);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const backgroundTimeRef = useRef<number>(0);
 
-  // Load settings from database
+  // Initialize failed attempts from sessionStorage
   useEffect(() => {
-    const loadSettings = async () => {
+    const storedAttempts = sessionStorage.getItem(FAILED_ATTEMPTS_KEY);
+    if (storedAttempts) {
+      setFailedAttemptsState(parseInt(storedAttempts, 10));
+    }
+    
+    const storedCooldown = sessionStorage.getItem(LOCK_COOLDOWN_KEY);
+    if (storedCooldown) {
+      const cooldownEnd = parseInt(storedCooldown, 10);
+      if (cooldownEnd > Date.now()) {
+        setLockCooldownEnd(cooldownEnd);
+      } else {
+        sessionStorage.removeItem(LOCK_COOLDOWN_KEY);
+      }
+    }
+  }, []);
+
+  // Persist failed attempts to sessionStorage
+  const setFailedAttempts = useCallback((count: number) => {
+    setFailedAttemptsState(count);
+    if (count > 0) {
+      sessionStorage.setItem(FAILED_ATTEMPTS_KEY, count.toString());
+    } else {
+      sessionStorage.removeItem(FAILED_ATTEMPTS_KEY);
+    }
+  }, []);
+
+  // Set lock cooldown (brute force protection)
+  const setLockCooldown = useCallback((endTime: number) => {
+    setLockCooldownEnd(endTime);
+    sessionStorage.setItem(LOCK_COOLDOWN_KEY, endTime.toString());
+  }, []);
+
+  const clearLockCooldown = useCallback(() => {
+    setLockCooldownEnd(null);
+    sessionStorage.removeItem(LOCK_COOLDOWN_KEY);
+    setFailedAttempts(0);
+  }, [setFailedAttempts]);
+
+  // Check if app should be locked on mount
+  useEffect(() => {
+    const checkLockState = async () => {
       if (!user) {
-        setIsLoading(false);
         setIsLocked(false);
+        setIsLoading(false);
         return;
       }
 
       try {
-        const { data: userSettingsData, error: userSettingsError } = await supabase
-          .from('user_settings')
-          .select('confidential_mode, auto_lock_timeout, pin_enabled')
+        // Check if PIN is configured
+        const { data: credData } = await supabase
+          .from('secure_credentials')
+          .select('pin_hash')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (userSettingsError && userSettingsError.code !== 'PGRST116') {
-          console.error('Error loading user settings:', userSettingsError);
+        const { data: settingsData } = await supabase
+          .from('user_settings')
+          .select('pin_enabled, auto_lock_timeout, confidential_mode')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        const pinConfigured = !!(credData?.pin_hash && settingsData?.pin_enabled);
+        setIsPinConfigured(pinConfigured);
+        setAutoLockTimeout(settingsData?.auto_lock_timeout ?? 0);
+        setSettings({ confidentialMode: settingsData?.confidential_mode ?? false });
+
+        if (pinConfigured) {
+          // Check sessionStorage for unlock state
+          const isUnlocked = sessionStorage.getItem(UNLOCK_SESSION_KEY) === 'true';
+          setIsLocked(!isUnlocked);
+        } else {
+          setIsLocked(false);
         }
-
-        const dbSettings: SecuritySettings = {
-          confidentialMode: userSettingsData?.confidential_mode ?? false,
-        };
-        setSettings(dbSettings);
-
-        // Store auto-lock settings
-        autoLockTimeoutRef.current = userSettingsData?.auto_lock_timeout ?? 0;
-        pinEnabledRef.current = userSettingsData?.pin_enabled ?? false;
-
-        // Check if PIN is enabled and we should lock on app start
-        if (userSettingsData?.pin_enabled) {
-          // Check secure_credentials to see if PIN is actually set
-          const { data: credData } = await supabase
-            .from('secure_credentials')
-            .select('pin_hash')
-            .eq('user_id', user.id)
-            .single();
-
-          if (credData?.pin_hash) {
-            setIsLocked(true);
-          }
-        }
-
-        // Ensure default record exists
-        if (!userSettingsData) {
-          await supabase
-            .from('user_settings')
-            .upsert({
-              user_id: user.id,
-              confidential_mode: false,
-            }, { onConflict: 'user_id' });
-        }
-      } catch (e) {
-        console.error('Error loading security settings:', e);
+      } catch (error) {
+        console.error('Error checking lock state:', error);
+        setIsLocked(false);
       }
 
       setIsLoading(false);
     };
 
-    loadSettings();
+    checkLockState();
   }, [user]);
 
-  // Handle visibility change (app goes to background)
+  // Handle visibility change (app goes to background/foreground)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isPinConfigured) return;
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'hidden') {
+        // App went to background - record the time
+        backgroundTimeRef.current = Date.now();
+      } else if (document.visibilityState === 'visible') {
         // App came back to foreground
-        const now = Date.now();
-        const timeSinceLastActive = (now - lastActiveTime) / 1000; // in seconds
-
-        // Check if we should lock based on timeout
-        if (pinEnabledRef.current && autoLockTimeoutRef.current >= 0) {
-          if (autoLockTimeoutRef.current === 0 || timeSinceLastActive >= autoLockTimeoutRef.current) {
-            setIsLocked(true);
-          }
+        const timeInBackground = Date.now() - backgroundTimeRef.current;
+        const thresholdMs = 30000; // 30 seconds in background = lock
+        
+        if (backgroundTimeRef.current > 0 && timeInBackground >= thresholdMs) {
+          // Lock the app after 30 seconds in background
+          setIsLocked(true);
+          sessionStorage.removeItem(UNLOCK_SESSION_KEY);
         }
         
-        setLastActiveTime(now);
-      } else {
-        // App went to background - record the time
+        backgroundTimeRef.current = 0;
         setLastActiveTime(Date.now());
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [user, lastActiveTime]);
+  }, [user, isPinConfigured]);
 
-  // Auto-lock check interval
+  // Inactivity timer - lock after 5 minutes of no activity
   useEffect(() => {
-    if (!user || !pinEnabledRef.current) return;
+    if (!user || !isPinConfigured || isLocked) return;
 
-    const checkAutoLock = () => {
-      const now = Date.now();
-      const timeSinceLastActive = (now - lastActiveTime) / 1000;
+    const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-      if (autoLockTimeoutRef.current > 0 && timeSinceLastActive >= autoLockTimeoutRef.current) {
-        setIsLocked(true);
+    const resetInactivityTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
       }
+      
+      inactivityTimerRef.current = setTimeout(() => {
+        setIsLocked(true);
+        sessionStorage.removeItem(UNLOCK_SESSION_KEY);
+      }, INACTIVITY_TIMEOUT);
+      
+      setLastActiveTime(Date.now());
     };
 
-    // Check every 10 seconds
-    lockCheckIntervalRef.current = setInterval(checkAutoLock, 10000);
+    // Events that reset the inactivity timer
+    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+    
+    events.forEach(event => {
+      document.addEventListener(event, resetInactivityTimer, { passive: true });
+    });
+
+    // Start the timer
+    resetInactivityTimer();
 
     return () => {
-      if (lockCheckIntervalRef.current) {
-        clearInterval(lockCheckIntervalRef.current);
+      events.forEach(event => {
+        document.removeEventListener(event, resetInactivityTimer);
+      });
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
       }
     };
-  }, [user, lastActiveTime]);
+  }, [user, isPinConfigured, isLocked]);
 
-  // Update last active time on user interaction
+  // Lock app before page unload (optional extra security)
+  useEffect(() => {
+    if (!user || !isPinConfigured) return;
+
+    const handleBeforeUnload = () => {
+      // Don't clear sessionStorage on refresh, only on tab close
+      // This is handled by sessionStorage automatically
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user, isPinConfigured]);
+
   const updateLastActiveTime = useCallback(() => {
     setLastActiveTime(Date.now());
   }, []);
 
   const lockApp = useCallback(() => {
     setIsLocked(true);
+    sessionStorage.removeItem(UNLOCK_SESSION_KEY);
   }, []);
 
   const unlockApp = useCallback(() => {
     setIsLocked(false);
+    sessionStorage.setItem(UNLOCK_SESSION_KEY, 'true');
     setLastActiveTime(Date.now());
-  }, []);
+    clearLockCooldown();
+  }, [clearLockCooldown]);
 
   // Save settings to database
   const saveSettingsToDb = useCallback(async (newSettings: SecuritySettings) => {
@@ -201,40 +274,63 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await saveSettingsToDb(newSettings);
   }, [settings, saveSettingsToDb]);
 
-  // Refresh auto-lock settings when they change
+  // Listen for PIN configuration changes
   useEffect(() => {
-    const refreshSettings = async () => {
-      if (!user) return;
+    if (!user) return;
 
-      const { data } = await supabase
-        .from('user_settings')
-        .select('auto_lock_timeout, pin_enabled')
+    const checkPinConfig = async () => {
+      const { data: credData } = await supabase
+        .from('secure_credentials')
+        .select('pin_hash')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
-        autoLockTimeoutRef.current = data.auto_lock_timeout ?? 0;
-        pinEnabledRef.current = data.pin_enabled ?? false;
+      const { data: settingsData } = await supabase
+        .from('user_settings')
+        .select('pin_enabled, auto_lock_timeout')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const pinConfigured = !!(credData?.pin_hash && settingsData?.pin_enabled);
+      setIsPinConfigured(pinConfigured);
+      setAutoLockTimeout(settingsData?.auto_lock_timeout ?? 0);
+
+      // If PIN was just configured, lock the app
+      if (pinConfigured && !isPinConfigured) {
+        setIsLocked(true);
+        sessionStorage.removeItem(UNLOCK_SESSION_KEY);
+      }
+      // If PIN was disabled, unlock
+      if (!pinConfigured && isPinConfigured) {
+        setIsLocked(false);
       }
     };
 
     // Listen for realtime changes
     const channel = supabase
-      .channel('user_settings_changes')
+      .channel('security_settings_changes')
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'user_settings',
-        filter: `user_id=eq.${user?.id}`,
+        filter: `user_id=eq.${user.id}`,
       }, () => {
-        refreshSettings();
+        checkPinConfig();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'secure_credentials',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        checkPinConfig();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, isPinConfigured]);
 
   return (
     <SecurityContext.Provider
@@ -248,6 +344,13 @@ export const SecurityProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         unlockApp,
         lastActiveTime,
         updateLastActiveTime,
+        isPinConfigured,
+        autoLockTimeout,
+        failedAttempts,
+        setFailedAttempts,
+        lockCooldownEnd,
+        setLockCooldown,
+        clearLockCooldown,
       }}
     >
       {children}
