@@ -19,7 +19,6 @@ import {
   Book,
   Bot,
   ChevronDown,
-  Lock,
   Users,
   FileText,
   Check,
@@ -28,6 +27,7 @@ import {
   ChevronUp,
   Plus,
   Minus,
+  Eye,
   HelpCircle,
   Sun,
   Moon,
@@ -191,7 +191,6 @@ const Landing = () => {
     { icon: Trophy, title: t('landingFeatureChallenges'), desc: t('landingFeatureChallengesDesc') },
     { icon: Bot, title: t('landingFeatureAI'), desc: t('landingFeatureAIDesc') },
     { icon: FileText, title: t('landingFeatureReports'), desc: t('landingFeatureReportsDesc') },
-    { icon: Lock, title: t('landingFeaturePIN'), desc: t('landingFeaturePINDesc') },
     { icon: Shield, title: t('landingFeatureConfidential'), desc: t('landingFeatureConfidentialDesc') },
   ];
 
@@ -200,7 +199,6 @@ const Landing = () => {
     t('landingAdvancedPsychology'),
     t('landingCurrenciesSupported'),
     t('landingPdfExport'),
-    t('landingPinBiometric'),
     t('landingFocusMode'),
     t('landingPeriodComparison'),
     t('landingEmailAlerts'),
@@ -210,7 +208,7 @@ const Landing = () => {
   ];
 
   const commitments = [
-    { icon: Lock, title: t('landingPrivacy'), desc: t('landingEncryptedData') },
+    { icon: Eye, title: t('landingPrivacy'), desc: t('landingEncryptedData') },
     { icon: Shield, title: t('landingSecurity'), desc: t('landingMaxProtection') },
     { icon: FileText, title: t('landingTransparency'), desc: t('landingClearPolicies') },
     { icon: Users, title: t('landingSupportLabel'), desc: t('landingHelpAvailable') },
