@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ScrollRevealProps {
@@ -15,13 +15,25 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
   className,
   animation = 'fade-up',
   delay = 0,
-  duration = 600,
+  duration = 400,
   threshold = 0.1,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  
+  // Check if user prefers reduced motion
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  }, []);
 
   useEffect(() => {
+    // Skip animation if user prefers reduced motion
+    if (prefersReducedMotion) {
+      setIsVisible(true);
+      return;
+    }
+
     const element = ref.current;
     if (!element) return;
 
@@ -32,7 +44,7 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
           observer.unobserve(element);
         }
       },
-      { threshold, rootMargin: '0px 0px -50px 0px' }
+      { threshold, rootMargin: '0px 0px -30px 0px' }
     );
 
     observer.observe(element);
@@ -40,30 +52,35 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
     return () => {
       observer.unobserve(element);
     };
-  }, [threshold]);
+  }, [threshold, prefersReducedMotion]);
+
+  // If reduced motion, render children directly
+  if (prefersReducedMotion) {
+    return <div className={className}>{children}</div>;
+  }
 
   const getAnimationStyles = (): React.CSSProperties => {
     const baseStyles: React.CSSProperties = {
       transitionDuration: `${duration}ms`,
       transitionDelay: `${delay}ms`,
       transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
-      willChange: isVisible ? 'auto' : 'opacity, transform',
+      transitionProperty: 'opacity, transform',
     };
 
     if (!isVisible) {
       switch (animation) {
         case 'fade-up':
-          return { ...baseStyles, opacity: 0, transform: 'translateY(30px)' };
+          return { ...baseStyles, opacity: 0, transform: 'translateY(20px)' };
         case 'fade-down':
-          return { ...baseStyles, opacity: 0, transform: 'translateY(-30px)' };
+          return { ...baseStyles, opacity: 0, transform: 'translateY(-20px)' };
         case 'fade-left':
-          return { ...baseStyles, opacity: 0, transform: 'translateX(30px)' };
+          return { ...baseStyles, opacity: 0, transform: 'translateX(20px)' };
         case 'fade-right':
-          return { ...baseStyles, opacity: 0, transform: 'translateX(-30px)' };
+          return { ...baseStyles, opacity: 0, transform: 'translateX(-20px)' };
         case 'scale':
-          return { ...baseStyles, opacity: 0, transform: 'scale(0.95)' };
+          return { ...baseStyles, opacity: 0, transform: 'scale(0.97)' };
         case 'blur':
-          return { ...baseStyles, opacity: 0, filter: 'blur(8px)' };
+          return { ...baseStyles, opacity: 0 };
         default:
           return { ...baseStyles, opacity: 0 };
       }
@@ -73,14 +90,13 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
       ...baseStyles,
       opacity: 1,
       transform: 'none',
-      filter: 'none',
     };
   };
 
   return (
     <div
       ref={ref}
-      className={cn('transition-all', className)}
+      className={cn(className)}
       style={getAnimationStyles()}
     >
       {children}
@@ -88,4 +104,4 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
   );
 };
 
-export default ScrollReveal;
+export default React.memo(ScrollReveal);

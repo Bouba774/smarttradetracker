@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -35,9 +35,6 @@ import {
   BookOpen
 } from 'lucide-react';
 import ScrollReveal from '@/components/landing/ScrollReveal';
-import ParticleBackground from '@/components/landing/ParticleBackground';
-import FeatureShowcase from '@/components/landing/FeatureShowcase';
-import AnimatedStats from '@/components/landing/AnimatedStats';
 import { APP_NAME, APP_VERSION } from '@/lib/version';
 import {
   Accordion,
@@ -46,6 +43,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+// Lazy load heavy components
+const ParticleBackground = lazy(() => import('@/components/landing/ParticleBackground'));
+const FeatureShowcase = lazy(() => import('@/components/landing/FeatureShowcase'));
+const AnimatedStats = lazy(() => import('@/components/landing/AnimatedStats'));
+
 const Landing = () => {
   const { language, setLanguage, languages, t, isRTL } = useLanguage();
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -53,18 +55,18 @@ const Landing = () => {
   const [averageRating, setAverageRating] = useState(0);
   const [tradesRecorded, setTradesRecorded] = useState(0);
   const [countersStarted, setCountersStarted] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [typedText, setTypedText] = useState('');
   const [wordIndex, setWordIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const words = [
+  // Memoize words array to prevent recreating on each render
+  const words = useMemo(() => [
     t('landingWordDiscipline'),
     t('landingWordPrecision'),
     t('landingWordConsistency'),
     t('landingWordConfidence'),
     t('landingWordMastery')
-  ];
+  ], [t]);
 
   // Typing effect with rotating words
   useEffect(() => {
@@ -95,21 +97,7 @@ const Landing = () => {
     return () => clearTimeout(timeout);
   }, [typedText, isDeleting, wordIndex, words]);
 
-  // Parallax effect - optimized with requestAnimationFrame to avoid forced reflow
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          setScrollY(window.scrollY);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Removed heavy parallax scroll effect for performance
 
   // Counter animation with intersection observer - optimized with requestAnimationFrame
   useEffect(() => {
@@ -217,27 +205,19 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
-      {/* Floating Particles Background */}
-      <ParticleBackground />
-      {/* Clean Background with subtle gradient and parallax */}
+      {/* Floating Particles Background - lazy loaded */}
+      <Suspense fallback={null}>
+        <ParticleBackground />
+      </Suspense>
+      
+      {/* Simple gradient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div 
-          className="absolute inset-0 transition-transform duration-100"
+          className="absolute inset-0"
           style={{
             background: resolvedTheme === 'dark' 
               ? 'radial-gradient(ellipse 80% 50% at 50% -20%, hsl(190 100% 50% / 0.08), transparent)'
               : 'radial-gradient(ellipse 80% 50% at 50% -20%, hsl(200 100% 45% / 0.06), transparent)',
-            transform: `translateY(${scrollY * 0.1}px)`
-          }}
-        />
-        {/* Secondary parallax layer */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: resolvedTheme === 'dark'
-              ? 'radial-gradient(ellipse 60% 40% at 80% 80%, hsl(160 100% 40% / 0.04), transparent)'
-              : 'radial-gradient(ellipse 60% 40% at 80% 80%, hsl(160 100% 40% / 0.03), transparent)',
-            transform: `translateY(${scrollY * -0.05}px)`
           }}
         />
       </div>
@@ -423,9 +403,11 @@ const Landing = () => {
               </div>
             </ScrollReveal>
 
-            {/* Interactive Feature Showcase */}
+            {/* Interactive Feature Showcase - lazy loaded */}
             <ScrollReveal animation="fade-up" delay={100}>
-              <FeatureShowcase />
+              <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Chargement...</div></div>}>
+                <FeatureShowcase />
+              </Suspense>
             </ScrollReveal>
 
           </div>
@@ -456,7 +438,9 @@ const Landing = () => {
             </ScrollReveal>
 
             <ScrollReveal animation="fade-up" delay={100}>
-              <AnimatedStats />
+              <Suspense fallback={<div className="h-48 flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Chargement...</div></div>}>
+                <AnimatedStats />
+              </Suspense>
             </ScrollReveal>
           </div>
         </section>

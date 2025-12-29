@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   BarChart3, 
@@ -22,7 +22,7 @@ const FeatureShowcase: React.FC = () => {
   const [activeFeature, setActiveFeature] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
-  const features = [
+  const features = useMemo(() => [
     {
       icon: BarChart3,
       title: t('featureShowcaseDashboardTitle'),
@@ -155,9 +155,9 @@ const FeatureShowcase: React.FC = () => {
         t('featureShowcaseAIH3')
       ]
     },
-  ];
+  ], [t]);
 
-  // Auto-scroll every 2 seconds
+  // Auto-scroll every 3 seconds (increased from 2s for better UX)
   const nextFeature = useCallback(() => {
     setActiveFeature((prev) => (prev + 1) % features.length);
   }, [features.length]);
@@ -165,19 +165,17 @@ const FeatureShowcase: React.FC = () => {
   useEffect(() => {
     if (isPaused) return;
     
-    const interval = setInterval(() => {
-      nextFeature();
-    }, 2000);
-
+    const interval = setInterval(nextFeature, 3000);
     return () => clearInterval(interval);
   }, [isPaused, nextFeature]);
 
-  const handleFeatureClick = (index: number) => {
+  const handleFeatureClick = useCallback((index: number) => {
     setActiveFeature(index);
     setIsPaused(true);
     // Resume auto-scroll after 5 seconds of inactivity
-    setTimeout(() => setIsPaused(false), 5000);
-  };
+    const timeout = setTimeout(() => setIsPaused(false), 5000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const activeItem = features[activeFeature];
   const ActiveIcon = activeItem.icon;
@@ -188,7 +186,7 @@ const FeatureShowcase: React.FC = () => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Feature tabs - scrollable on mobile with auto-scroll indicator */}
+      {/* Feature tabs - scrollable on mobile */}
       <div className="relative">
         <div className="flex overflow-x-auto pb-4 mb-8 gap-2 scrollbar-hide">
           {features.map((feature, index) => {
@@ -197,9 +195,9 @@ const FeatureShowcase: React.FC = () => {
               <button
                 key={index}
                 onClick={() => handleFeatureClick(index)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border whitespace-nowrap transition-all duration-300 ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border whitespace-nowrap transition-colors duration-200 ${
                   activeFeature === index
-                    ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30 scale-105'
+                    ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30'
                     : 'bg-card/50 text-muted-foreground border-border/50 hover:border-primary/50 hover:text-foreground'
                 }`}
               >
@@ -211,13 +209,13 @@ const FeatureShowcase: React.FC = () => {
             );
           })}
         </div>
-        {/* Progress bar indicator */}
+        {/* Progress bar */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-border/30 rounded-full overflow-hidden">
           <div 
-            className="h-full bg-primary transition-all duration-300"
+            className="h-full bg-primary"
             style={{ 
               width: `${((activeFeature + 1) / features.length) * 100}%`,
-              transition: isPaused ? 'none' : 'width 2s linear'
+              transition: 'width 0.3s ease'
             }}
           />
         </div>
@@ -225,14 +223,7 @@ const FeatureShowcase: React.FC = () => {
 
       {/* Feature detail card */}
       <div className="relative">
-        {/* Animated background gradient */}
-        <div className={`absolute -inset-4 bg-gradient-to-r ${activeItem.color} rounded-3xl blur-2xl opacity-20 transition-all duration-500`} />
-        
         <div className="relative rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm p-6 md:p-8 overflow-hidden">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-profit/10 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-          
           <div className="relative z-10 grid md:grid-cols-2 gap-8 items-center">
             {/* Left: Content */}
             <div>
@@ -262,21 +253,15 @@ const FeatureShowcase: React.FC = () => {
               </div>
             </div>
             
-            {/* Right: Visual indicator */}
+            {/* Right: Visual indicator - simplified */}
             <div className="hidden md:flex items-center justify-center">
-              <div className="relative">
-                {/* Animated rings */}
-                <div className={`absolute inset-0 rounded-full bg-gradient-to-r ${activeItem.color} animate-ping opacity-20`} style={{ animationDuration: '2s' }} />
-                <div className={`absolute inset-4 rounded-full bg-gradient-to-r ${activeItem.color} animate-ping opacity-30`} style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
-                
-                <div className={`relative w-40 h-40 rounded-full bg-gradient-to-r ${activeItem.color} flex items-center justify-center shadow-2xl`}>
-                  <ActiveIcon className="w-16 h-16 text-white" />
-                </div>
+              <div className={`relative w-40 h-40 rounded-full bg-gradient-to-r ${activeItem.color} flex items-center justify-center shadow-2xl`}>
+                <ActiveIcon className="w-16 h-16 text-white" />
               </div>
             </div>
           </div>
           
-          {/* Navigation arrows */}
+          {/* Navigation */}
           <div className="flex justify-between mt-8 pt-6 border-t border-border/50">
             <button
               onClick={() => {
@@ -295,8 +280,8 @@ const FeatureShowcase: React.FC = () => {
                 <button
                   key={i}
                   onClick={() => handleFeatureClick(i)}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 hover:bg-primary/70 ${
-                    i === activeFeature ? 'bg-primary w-4' : 'bg-muted-foreground/30'
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                    i === activeFeature ? 'bg-primary w-4' : 'bg-muted-foreground/30 hover:bg-primary/50'
                   }`}
                 />
               ))}
@@ -320,4 +305,4 @@ const FeatureShowcase: React.FC = () => {
   );
 };
 
-export default FeatureShowcase;
+export default React.memo(FeatureShowcase);
