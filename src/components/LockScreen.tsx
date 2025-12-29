@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useSecurity } from '@/contexts/SecurityContext';
 import { PINInput } from './PINInput';
 import { Lock, Shield, AlertTriangle, Clock, KeyRound, Mail, Fingerprint } from 'lucide-react';
@@ -45,10 +45,13 @@ export const LockScreen: React.FC = () => {
   
   const [error, setError] = useState(false);
   const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter');
-  const firstPinRef = useRef<string>('');
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Use ref for firstPin to persist across re-renders without causing stale closures
+  const firstPinRef = useRef<string>('');
 
   if (!isLocked && !isSetupMode) {
     return null;
@@ -75,14 +78,23 @@ export const LockScreen: React.FC = () => {
     }
   };
 
-  const handleSetup = async (pin: string) => {
+  const handleSetup = useCallback(async (pin: string) => {
+    // Prevent double processing
+    if (isProcessing) return;
+    
     if (setupStep === 'enter') {
+      // Store the first PIN and move to confirmation step
       firstPinRef.current = pin;
       setSetupStep('confirm');
-    } else {
-      if (pin === firstPinRef.current) {
+    } else if (setupStep === 'confirm') {
+      // Compare with stored first PIN
+      const storedFirstPin = firstPinRef.current;
+      
+      if (pin === storedFirstPin && storedFirstPin.length > 0) {
+        setIsProcessing(true);
         try {
           await setupPin(pin);
+          // Success - reset everything
           setSetupStep('enter');
           firstPinRef.current = '';
         } catch (error) {
@@ -93,8 +105,11 @@ export const LockScreen: React.FC = () => {
             setSetupStep('enter');
             firstPinRef.current = '';
           }, 500);
+        } finally {
+          setIsProcessing(false);
         }
       } else {
+        // PINs don't match - show error and reset
         setError(true);
         setTimeout(() => {
           setError(false);
@@ -103,7 +118,7 @@ export const LockScreen: React.FC = () => {
         }, 500);
       }
     }
-  };
+  }, [setupStep, setupPin, isProcessing]);
 
   const handleCancelSetup = () => {
     exitSetupMode();
