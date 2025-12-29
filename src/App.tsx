@@ -11,7 +11,7 @@ import { SecurityProvider } from "@/contexts/SecurityContext";
 import { AdminProvider } from "@/contexts/AdminContext";
 import Layout from "@/components/layout/Layout";
 import { CookieConsent } from "@/components/CookieConsent";
-import LockScreen from "@/components/LockScreen";
+
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import ChunkErrorBoundary from "@/components/ChunkErrorBoundary";
 import { usePrefetchOnAuth } from "@/hooks/useRoutePrefetch";
@@ -43,7 +43,7 @@ const TermsOfUse = lazy(() => import(/* webpackChunkName: "legal" */ "./pages/Te
 const About = lazy(() => import(/* webpackChunkName: "about" */ "./pages/About"));
 const PrivacyCenter = lazy(() => import(/* webpackChunkName: "privacy" */ "./pages/PrivacyCenter"));
 const ResetPassword = lazy(() => import(/* webpackChunkName: "auth" */ "./pages/ResetPassword"));
-const ResetPin = lazy(() => import(/* webpackChunkName: "auth" */ "./pages/ResetPin"));
+
 const Help = lazy(() => import(/* webpackChunkName: "help" */ "./pages/Help"));
 const AIChatBot = lazy(() => import(/* webpackChunkName: "ai-chat" */ "@/components/AIChatBot"));
 const ChangelogModal = lazy(() => import(/* webpackChunkName: "changelog" */ "@/components/ChangelogModal"));
@@ -109,9 +109,6 @@ const AppContent = () => {
 
   return (
     <>
-      {/* Lock Screen - appears on top of everything when locked */}
-      {user && <LockScreen />}
-      
       <ChunkErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>
@@ -121,7 +118,6 @@ const AppContent = () => {
             {/* Auth pages */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/reset-pin" element={<ResetPin />} />
             
             {/* Public pages without authentication */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
