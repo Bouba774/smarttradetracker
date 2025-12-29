@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Delete, Check } from 'lucide-react';
@@ -23,41 +23,64 @@ export const PINInput: React.FC<PINInputProps> = ({
   const { language } = useLanguage();
   const [pin, setPin] = useState<string>('');
   const [shake, setShake] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Shake animation on error
+  // Reset PIN on error
   useEffect(() => {
     if (error) {
       setShake(true);
       setPin('');
+      setIsSubmitting(false);
       const timer = setTimeout(() => setShake(false), 500);
       return () => clearTimeout(timer);
     }
   }, [error]);
 
-  const handleNumberClick = (num: number) => {
-    if (disabled || pin.length >= length) return;
+  // Reset PIN when component key changes (detected by length or showConfirm change)
+  useEffect(() => {
+    setPin('');
+    setIsSubmitting(false);
+  }, [length, showConfirm]);
+
+  const handleNumberClick = useCallback((num: number) => {
+    if (disabled || isSubmitting || pin.length >= length) return;
     
     const newPin = pin + num.toString();
     setPin(newPin);
     
-    // Auto-submit when complete
+    // Auto-submit when complete (only if NOT in confirm mode)
     if (newPin.length === length && !showConfirm) {
-      setTimeout(() => onComplete(newPin), 100);
+      setIsSubmitting(true);
+      // Use setTimeout to allow state update before callback
+      setTimeout(() => {
+        onComplete(newPin);
+        // Reset after submission
+        setPin('');
+        setIsSubmitting(false);
+      }, 100);
     }
-  };
+  }, [disabled, isSubmitting, pin, length, showConfirm, onComplete]);
 
-  const handleDelete = () => {
-    if (disabled) return;
-    setPin(pin.slice(0, -1));
-  };
+  const handleDelete = useCallback(() => {
+    if (disabled || isSubmitting) return;
+    setPin(prev => prev.slice(0, -1));
+  }, [disabled, isSubmitting]);
 
-  const handleConfirm = () => {
-    if (pin.length === length) {
-      const currentPin = pin;
-      setPin('');
+  const handleConfirm = useCallback(() => {
+    if (pin.length !== length || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const currentPin = pin;
+    
+    // Clear state immediately before calling onComplete
+    setPin('');
+    
+    // Call onComplete after state is cleared
+    setTimeout(() => {
       onComplete(currentPin);
-    }
-  };
+      setIsSubmitting(false);
+    }, 50);
+  }, [pin, length, isSubmitting, onComplete]);
 
   const dots = Array.from({ length }, (_, i) => (
     <div
@@ -98,13 +121,14 @@ export const PINInput: React.FC<PINInputProps> = ({
               <button
                 key={index}
                 onClick={handleDelete}
-                disabled={disabled || pin.length === 0}
+                disabled={disabled || isSubmitting || pin.length === 0}
                 className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center",
                   "text-muted-foreground transition-all",
                   "hover:bg-secondary/50 active:scale-95",
                   "disabled:opacity-30 disabled:pointer-events-none"
                 )}
+                type="button"
               >
                 <Delete className="w-6 h-6" />
               </button>
@@ -115,7 +139,7 @@ export const PINInput: React.FC<PINInputProps> = ({
             <button
               key={index}
               onClick={() => handleNumberClick(item as number)}
-              disabled={disabled || pin.length >= length}
+              disabled={disabled || isSubmitting || pin.length >= length}
               className={cn(
                 "w-16 h-16 rounded-full flex items-center justify-center",
                 "text-2xl font-medium text-foreground",
@@ -125,6 +149,7 @@ export const PINInput: React.FC<PINInputProps> = ({
                 "active:scale-95 active:bg-primary/20",
                 "disabled:opacity-50 disabled:pointer-events-none"
               )}
+              type="button"
             >
               {item}
             </button>
@@ -132,15 +157,17 @@ export const PINInput: React.FC<PINInputProps> = ({
         })}
       </div>
 
-      {/* Confirm Button (for setup mode) */}
-      {showConfirm && pin.length === length && (
+      {/* Confirm Button (for setup mode - only show when PIN is complete) */}
+      {showConfirm && pin.length === length && !isSubmitting && (
         <button
           onClick={handleConfirm}
+          disabled={isSubmitting}
           className={cn(
             "flex items-center gap-2 px-6 py-3 rounded-lg",
             "bg-primary text-primary-foreground font-medium",
             "transition-all hover:opacity-90 active:scale-95"
           )}
+          type="button"
         >
           <Check className="w-5 h-5" />
           {language === 'fr' ? 'Confirmer' : 'Confirm'}
@@ -151,7 +178,9 @@ export const PINInput: React.FC<PINInputProps> = ({
       {onCancel && (
         <button
           onClick={onCancel}
+          disabled={isSubmitting}
           className="text-muted-foreground text-sm hover:text-foreground transition-colors"
+          type="button"
         >
           {language === 'fr' ? 'Annuler' : 'Cancel'}
         </button>
