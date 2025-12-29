@@ -16,7 +16,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import AIDailySummaryCard from '@/components/AIDailySummaryCard';
 import SessionSettingsCard from '@/components/SessionSettingsCard';
-import RewardChestsDisplay from '@/components/RewardChestsDisplay';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, addMonths, isWithinInterval, parseISO, getDay } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import {
@@ -958,11 +957,8 @@ const Reports: React.FC = () => {
             )}
           </div>
 
-          {/* AI Summary & Reward Chests */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AIDailySummaryCard trades={trades} />
-            <RewardChestsDisplay trades={trades} />
-          </div>
+          {/* AI Summary */}
+          <AIDailySummaryCard trades={trades} />
 
           {/* Daily PnL */}
           <div className="glass-card p-6 animate-fade-in">
