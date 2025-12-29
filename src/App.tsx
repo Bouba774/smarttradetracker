@@ -1,9 +1,9 @@
-import { Suspense, lazy, useCallback } from "react";
+import { Suspense, lazy, useCallback, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -87,11 +87,16 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route wrapper
+// Constants for brute force protection
+const MAX_PIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60 * 1000; // 1 minute lockout
+
+// Protected route wrapper with lock screen guard
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const { isLocked, isPinConfigured, isLoading: securityLoading } = useSecurity();
 
-  if (loading) {
+  if (loading || securityLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-primary">Loading...</div>
@@ -103,24 +108,39 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/auth" replace />;
   }
 
+  // If PIN is configured and app is locked, don't render protected content
+  // The lock screen will be shown by AppContent
+  if (isPinConfigured && isLocked) {
+    return null;
+  }
+
   return <>{children}</>;
 };
 
 // Component to conditionally render layout
 const AppContent = () => {
   const { user } = useAuth();
-  const { isLocked, unlockApp } = useSecurity();
+  const { 
+    isLocked, 
+    unlockApp, 
+    isPinConfigured, 
+    isLoading: securityLoading,
+    failedAttempts,
+    setFailedAttempts,
+    lockCooldownEnd,
+    setLockCooldown,
+    clearLockCooldown,
+  } = useSecurity();
   const {
-    isPinEnabled,
     isBiometricEnabled,
     verifyPin,
-    failedAttempts,
     maxAttempts,
     shouldWipeOnMaxAttempts,
     wipeLocalData,
     requestPinReset,
     isVerifying,
-    resetFailedAttempts,
+    checkBiometricAvailability,
+    pinStatus,
   } = usePinSecurity();
   
   // Track user sessions
@@ -129,26 +149,77 @@ const AppContent = () => {
   // Prefetch priority routes after authentication
   usePrefetchOnAuth(!!user);
 
-  // Handle PIN verification
+  // Handle PIN verification with brute force protection
   const handlePinVerify = useCallback(async (pin: string): Promise<boolean> => {
     try {
+      // Check if we're in cooldown
+      if (lockCooldownEnd && lockCooldownEnd > Date.now()) {
+        return false;
+      }
+
       const isValid = await verifyPin({ pin });
+      
       if (isValid) {
         unlockApp();
-        resetFailedAttempts();
+        setFailedAttempts(0);
         return true;
       }
       
+      // Increment failed attempts
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      
+      // Check if we should lock out (brute force protection)
+      if (newAttempts >= MAX_PIN_ATTEMPTS) {
+        const cooldownEnd = Date.now() + LOCKOUT_DURATION_MS;
+        setLockCooldown(cooldownEnd);
+        toast.error('Trop de tentatives. Veuillez patienter 1 minute.');
+      }
+      
       // Check if we should wipe data
-      if (shouldWipeOnMaxAttempts && failedAttempts + 1 >= maxAttempts) {
+      if (shouldWipeOnMaxAttempts && newAttempts >= (maxAttempts || MAX_PIN_ATTEMPTS)) {
         await wipeLocalData();
         toast.error('Données effacées après trop de tentatives');
       }
+      
       return false;
     } catch {
+      setFailedAttempts(failedAttempts + 1);
       return false;
     }
-  }, [verifyPin, unlockApp, resetFailedAttempts, shouldWipeOnMaxAttempts, failedAttempts, maxAttempts, wipeLocalData]);
+  }, [verifyPin, unlockApp, failedAttempts, setFailedAttempts, lockCooldownEnd, setLockCooldown, shouldWipeOnMaxAttempts, maxAttempts, wipeLocalData]);
+
+  // Handle biometric authentication
+  const handleBiometricUnlock = useCallback(async (): Promise<boolean> => {
+    try {
+      const isAvailable = await checkBiometricAvailability();
+      if (!isAvailable) {
+        toast.error('Biométrie non disponible');
+        return false;
+      }
+
+      // Use WebAuthn for biometric
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: new Uint8Array(32),
+          timeout: 60000,
+          userVerification: 'required',
+          rpId: window.location.hostname,
+        },
+      });
+
+      if (credential) {
+        unlockApp();
+        setFailedAttempts(0);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.log('Biometric authentication failed:', error);
+      return false;
+    }
+  }, [checkBiometricAvailability, unlockApp, setFailedAttempts]);
 
   const handleForgotPin = useCallback(async () => {
     const success = await requestPinReset();
@@ -159,16 +230,33 @@ const AppContent = () => {
     }
   }, [requestPinReset]);
 
-  // Show lock screen if locked and user is authenticated with PIN enabled
-  if (user && isLocked && isPinEnabled) {
+  const handleCooldownEnd = useCallback(() => {
+    clearLockCooldown();
+  }, [clearLockCooldown]);
+
+  // Show loading state
+  if (securityLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show lock screen if locked and user is authenticated with PIN configured
+  if (user && isLocked && isPinConfigured) {
     return (
       <LockScreen
         onUnlock={handlePinVerify}
+        onBiometricUnlock={isBiometricEnabled ? handleBiometricUnlock : undefined}
         failedAttempts={failedAttempts}
-        maxAttempts={maxAttempts}
+        maxAttempts={maxAttempts || MAX_PIN_ATTEMPTS}
         showBiometric={isBiometricEnabled}
+        pinLength={pinStatus?.pinLength || 4}
         isVerifying={isVerifying}
         onForgotPin={handleForgotPin}
+        cooldownEndTime={lockCooldownEnd}
+        onCooldownEnd={handleCooldownEnd}
       />
     );
   }
