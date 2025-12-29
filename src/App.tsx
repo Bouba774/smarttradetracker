@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +16,6 @@ import { useSessionTracking } from "@/hooks/useSessionTracking";
 import ChunkErrorBoundary from "@/components/ChunkErrorBoundary";
 import { usePrefetchOnAuth } from "@/hooks/useRoutePrefetch";
 import PageSkeleton from "@/components/ui/PageSkeleton";
-import SplashScreen from "@/components/SplashScreen";
 
 // Critical pages loaded immediately
 import Landing from "./pages/Landing";
@@ -180,17 +179,6 @@ const AppContent = () => {
 };
 
 const App = () => {
-  const [showSplash, setShowSplash] = useState(() => {
-    // Only show splash on first visit of the session
-    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-    return !hasSeenSplash;
-  });
-
-  const handleSplashComplete = () => {
-    sessionStorage.setItem('hasSeenSplash', 'true');
-    setShowSplash(false);
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
@@ -199,7 +187,6 @@ const App = () => {
             <SecurityProvider>
               <AdminProvider>
                 <TooltipProvider>
-                  {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
                   <Toaster />
                   <Sonner />
                   <BrowserRouter>
