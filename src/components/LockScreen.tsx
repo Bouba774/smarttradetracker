@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSecurity } from '@/contexts/SecurityContext';
 import { PINInput } from './PINInput';
 import { Lock, Shield, AlertTriangle, Clock, KeyRound, Mail, Fingerprint } from 'lucide-react';
@@ -45,7 +45,7 @@ export const LockScreen: React.FC = () => {
   
   const [error, setError] = useState(false);
   const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter');
-  const [firstPin, setFirstPin] = useState('');
+  const firstPinRef = useRef<string>('');
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [isRequestingReset, setIsRequestingReset] = useState(false);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
@@ -76,28 +76,28 @@ export const LockScreen: React.FC = () => {
   };
 
   const handleSetup = async (pin: string) => {
-    console.log('handleSetup called with pin:', pin, 'setupStep:', setupStep, 'firstPin:', firstPin);
+    console.log('handleSetup called with pin:', pin, 'setupStep:', setupStep, 'firstPinRef:', firstPinRef.current);
     
     if (setupStep === 'enter') {
-      console.log('Setting firstPin to:', pin);
-      setFirstPin(pin);
+      console.log('Setting firstPinRef to:', pin);
+      firstPinRef.current = pin;
       setSetupStep('confirm');
     } else {
-      console.log('Comparing pins:', pin, '===', firstPin, ':', pin === firstPin);
-      if (pin === firstPin) {
+      console.log('Comparing pins:', pin, '===', firstPinRef.current, ':', pin === firstPinRef.current);
+      if (pin === firstPinRef.current) {
         try {
           console.log('PINs match, calling setupPin...');
           await setupPin(pin);
           console.log('setupPin completed successfully');
           setSetupStep('enter');
-          setFirstPin('');
+          firstPinRef.current = '';
         } catch (error) {
           console.error('Error setting up PIN:', error);
           setError(true);
           setTimeout(() => {
             setError(false);
             setSetupStep('enter');
-            setFirstPin('');
+            firstPinRef.current = '';
           }, 500);
         }
       } else {
@@ -106,7 +106,7 @@ export const LockScreen: React.FC = () => {
         setTimeout(() => {
           setError(false);
           setSetupStep('enter');
-          setFirstPin('');
+          firstPinRef.current = '';
         }, 500);
       }
     }
@@ -115,7 +115,7 @@ export const LockScreen: React.FC = () => {
   const handleCancelSetup = () => {
     exitSetupMode();
     setSetupStep('enter');
-    setFirstPin('');
+    firstPinRef.current = '';
   };
 
   const handleForgotPin = async () => {
