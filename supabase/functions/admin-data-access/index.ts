@@ -1,17 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightResponse } from "../_shared/cors.ts";
 
 // Types de données accessibles par les admins
 type DataType = 'trades' | 'profile' | 'journal' | 'challenges' | 'settings' | 'sessions';
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightResponse(req);
   }
 
   try {
@@ -44,7 +42,6 @@ serve(async (req) => {
     });
 
     if (!isAdminData) {
-      console.log("[admin-data-access] Unauthorized access attempt by:", user.id);
       return new Response(
         JSON.stringify({ error: "Accès refusé" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -80,7 +77,6 @@ serve(async (req) => {
 
     // 5. Seule l'action 'read' est autorisée pour les admins
     if (action !== 'read') {
-      console.log("[admin-data-access] Write attempt blocked for admin:", user.id);
       return new Response(
         JSON.stringify({ error: "Action non autorisée" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -172,14 +168,11 @@ serve(async (req) => {
     }
 
     if (error) {
-      console.error("[admin-data-access] Database error:", error);
       return new Response(
         JSON.stringify({ error: "Erreur de récupération" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    console.log(`[admin-data-access] Admin ${user.id} accessed ${dataType} for user ${targetUserId}`);
 
     return new Response(
       JSON.stringify({ success: true, data }),
@@ -187,7 +180,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error("[admin-data-access] Unexpected error:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: "Erreur interne" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

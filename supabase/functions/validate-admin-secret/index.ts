@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsPreflightResponse } from "../_shared/cors.ts";
 
 // Configuration sécurisée - pas de secrets en clair
 const MAX_ATTEMPTS = 3;
@@ -51,9 +47,11 @@ function extractDeviceInfo(req: Request): {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightResponse(req);
   }
 
   try {
@@ -64,7 +62,6 @@ serve(async (req) => {
     // 1. Vérifier l'authentification JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.log("[validate-admin-secret] No auth header");
       return new Response(
         JSON.stringify({ error: "Non autorisé" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -75,7 +72,6 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
-      console.log("[validate-admin-secret] Invalid token");
       return new Response(
         JSON.stringify({ error: "Non autorisé" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -88,7 +84,6 @@ serve(async (req) => {
     });
 
     if (adminCheckError) {
-      console.error("[validate-admin-secret] Admin check error:", adminCheckError);
       return new Response(
         JSON.stringify({ error: "Erreur de vérification" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -96,7 +91,6 @@ serve(async (req) => {
     }
 
     if (!isAdminData) {
-      console.log("[validate-admin-secret] User is not admin:", user.id);
       // Ne pas révéler que l'utilisateur n'est pas admin - message générique
       return new Response(
         JSON.stringify({ error: "Accès refusé" }),
@@ -140,8 +134,6 @@ serve(async (req) => {
         user_agent: deviceInfo.userAgent,
         success: false,
       });
-
-      console.log("[validate-admin-secret] Admin blocked:", user.id);
       
       // Message générique - ne pas révéler la durée du blocage
       return new Response(
@@ -169,7 +161,6 @@ serve(async (req) => {
     });
 
     if (verifyError) {
-      console.error("[validate-admin-secret] Verify error:", verifyError);
       return new Response(
         JSON.stringify({ error: "Erreur de vérification" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -197,8 +188,6 @@ serve(async (req) => {
           timestamp: new Date().toISOString(),
         },
       });
-
-      console.log("[validate-admin-secret] Success for admin:", user.id);
 
       return new Response(
         JSON.stringify({ success: true }),
@@ -235,8 +224,6 @@ serve(async (req) => {
         },
       });
 
-      console.log("[validate-admin-secret] Failed attempt", newFailureCount, "for admin:", user.id);
-
       // Messages génériques - ne pas révéler trop d'informations
       return new Response(
         JSON.stringify({
@@ -251,7 +238,7 @@ serve(async (req) => {
       );
     }
   } catch (error) {
-    console.error("[validate-admin-secret] Unexpected error:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: "Erreur interne" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

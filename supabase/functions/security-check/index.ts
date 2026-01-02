@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-nonce',
-};
+import { getCorsHeaders, handleCorsPreflightResponse } from "../_shared/cors.ts";
 
 interface DeviceInfo {
   browserName?: string;
@@ -42,8 +38,10 @@ function generateFingerprint(deviceInfo: DeviceInfo, ip: string): string {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreflightResponse(req);
   }
 
   try {
@@ -53,7 +51,6 @@ serve(async (req) => {
     // Get authorization header and extract token
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -69,7 +66,6 @@ serve(async (req) => {
     // Get user from token
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) {
-      console.error('User error:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -94,7 +90,6 @@ serve(async (req) => {
       });
 
       if (!nonceValid) {
-        console.log(`[security-check] Replay attack detected for user ${user.id}`);
         return new Response(
           JSON.stringify({ error: 'Invalid request' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -126,7 +121,7 @@ serve(async (req) => {
               }
             }
           } catch (e) {
-            console.error('Geo lookup error:', e);
+            // Geo lookup failed silently
           }
         }
 
@@ -152,7 +147,6 @@ serve(async (req) => {
           .single();
 
         if (sessionError) {
-          console.error('Session insert error:', sessionError);
           return new Response(
             JSON.stringify({ error: 'Failed to track session' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -347,7 +341,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('[security-check] Error:', error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
