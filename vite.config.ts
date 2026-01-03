@@ -21,8 +21,18 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.jpg", "assets/app-logo.jpg"],
       manifest: false, // We use our own manifest.json
+      devOptions: {
+        enabled: false, // Disable SW in development
+      },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,jpg,png,svg,woff,woff2}"],
+        // Clean up old caches on new service worker activation
+        cleanupOutdatedCaches: true,
+        // Take control of all clients immediately when new SW activates
+        clientsClaim: true,
+        // Navigation fallback for SPA
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/supabase/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

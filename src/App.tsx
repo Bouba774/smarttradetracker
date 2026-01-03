@@ -14,6 +14,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import LockScreen from "@/components/LockScreen";
 import { usePinSecurity } from "@/hooks/usePinSecurity";
 import { toast } from "sonner";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 
 import { useSessionTracking } from "@/hooks/useSessionTracking";
 import ChunkErrorBoundary from "@/components/ChunkErrorBoundary";
@@ -349,6 +350,7 @@ const App = () => {
                   <BrowserRouter>
                     <AppContent />
                     <CookieConsent />
+                    <PWAUpdatePrompt />
                   </BrowserRouter>
                 </TooltipProvider>
               </AdminProvider>
