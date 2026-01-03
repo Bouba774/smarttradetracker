@@ -30,13 +30,21 @@ import {
   Clock,
 } from 'lucide-react';
 import { parseISO, getDay, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
-
-const DAYS_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+import { 
+  getComponentTranslation, 
+  psychologyTranslations, 
+  daysTranslations 
+} from '@/lib/i18n/componentTranslations';
+import type { Language } from '@/lib/i18n';
 
 const PsychologicalAnalysis: React.FC = () => {
   const { language, t } = useLanguage();
   const { trades, isLoading } = useTrades();
+  const pt = getComponentTranslation(psychologyTranslations, language as Language);
+  const dt = getComponentTranslation(daysTranslations, language as Language);
+  
+  // Get days array for current language
+  const daysArray = [dt.sun, dt.mon, dt.tue, dt.wed, dt.thu, dt.fri, dt.sat];
   
   // New hooks
   const executionQuality = useExecutionQuality(trades, language);
@@ -118,7 +126,6 @@ const PsychologicalAnalysis: React.FC = () => {
   const weeklyEmotionsByType = useMemo(() => {
     if (!trades || trades.length === 0) return { emotions: [], chartData: [] };
 
-    const days = language === 'fr' ? DAYS_FR : DAYS_EN;
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
@@ -165,7 +172,7 @@ const PsychologicalAnalysis: React.FC = () => {
     };
 
     const chartData = [1, 2, 3, 4, 5, 6, 0].map(dayIndex => {
-      const result: Record<string, any> = { day: days[dayIndex] };
+      const result: Record<string, any> = { day: daysArray[dayIndex] };
       emotions.forEach(emotion => {
         result[emotion] = dayTotals[dayIndex] > 0 
           ? Math.round(((dayData[dayIndex][emotion] || 0) / dayTotals[dayIndex]) * 100) 
@@ -186,11 +193,11 @@ const PsychologicalAnalysis: React.FC = () => {
       return {
         score: 0,
         factors: [
-          { name: language === 'fr' ? 'Respect du plan' : 'Following plan', score: 0, icon: Target },
-          { name: language === 'fr' ? 'Gestion du risque' : 'Risk management', score: 0, icon: Zap },
-          { name: language === 'fr' ? 'Pas d\'overtrading' : 'No overtrading', score: 0, icon: AlertTriangle },
-          { name: language === 'fr' ? 'SL toujours en place' : 'SL always set', score: 0, icon: CheckCircle2 },
-          { name: language === 'fr' ? 'Pas de revenge trading' : 'No revenge trading', score: 0, icon: TrendingDown },
+          { name: pt.followingPlan, score: 0, icon: Target },
+          { name: pt.riskManagement, score: 0, icon: Zap },
+          { name: pt.noOvertrading, score: 0, icon: AlertTriangle },
+          { name: pt.slAlwaysSet, score: 0, icon: CheckCircle2 },
+          { name: pt.noRevengeTrading, score: 0, icon: TrendingDown },
         ],
       };
     }
@@ -221,14 +228,14 @@ const PsychologicalAnalysis: React.FC = () => {
     return {
       score: overallScore,
       factors: [
-        { name: language === 'fr' ? 'Respect du plan' : 'Following plan', score: setupScore, icon: Target },
-        { name: language === 'fr' ? 'Gestion du risque' : 'Risk management', score: tpScore, icon: Zap },
-        { name: language === 'fr' ? 'Pas d\'overtrading' : 'No overtrading', score: Math.round(overtradingScore), icon: AlertTriangle },
-        { name: language === 'fr' ? 'SL toujours en place' : 'SL always set', score: slScore, icon: CheckCircle2 },
-        { name: language === 'fr' ? 'Pas de revenge trading' : 'No revenge trading', score: revengeScore, icon: TrendingDown },
+        { name: pt.followingPlan, score: setupScore, icon: Target },
+        { name: pt.riskManagement, score: tpScore, icon: Zap },
+        { name: pt.noOvertrading, score: Math.round(overtradingScore), icon: AlertTriangle },
+        { name: pt.slAlwaysSet, score: slScore, icon: CheckCircle2 },
+        { name: pt.noRevengeTrading, score: revengeScore, icon: TrendingDown },
       ],
     };
-  }, [trades, language]);
+  }, [trades, pt]);
 
   // Generate mental summary based on data
   const mentalSummary = useMemo(() => {
@@ -241,37 +248,37 @@ const PsychologicalAnalysis: React.FC = () => {
 
     const tradesWithSL = trades.filter(t => t.stop_loss).length;
     if (tradesWithSL / trades.length >= 0.8) {
-      positives.push(language === 'fr' ? 'Excellente gestion du risque avec SL' : 'Excellent risk management with SL');
+      positives.push(pt.excellentRiskManagement);
     } else if (tradesWithSL / trades.length < 0.5) {
-      negatives.push(language === 'fr' ? 'Améliorer l\'utilisation du Stop Loss' : 'Improve Stop Loss usage');
+      negatives.push(pt.improveSlUsage);
     }
 
     const calmTrades = trades.filter(t => t.emotions === 'Calme').length;
     if (calmTrades / trades.length >= 0.5) {
-      positives.push(language === 'fr' ? 'Bonne maîtrise émotionnelle' : 'Good emotional control');
+      positives.push(pt.goodEmotionalControl);
     }
 
     const stressedTrades = trades.filter(t => t.emotions === 'Stressé' || t.emotions === 'Impulsif').length;
     if (stressedTrades / trades.length >= 0.3) {
-      negatives.push(language === 'fr' ? 'Tendance au trading sous stress' : 'Tendency to trade under stress');
+      negatives.push(pt.tradingUnderStress);
     }
 
     const winrate = trades.filter(t => t.result === 'win').length / trades.length;
     if (winrate >= 0.6) {
-      positives.push(language === 'fr' ? 'Excellent taux de réussite' : 'Excellent win rate');
+      positives.push(pt.excellentWinRate);
     } else if (winrate < 0.4) {
-      negatives.push(language === 'fr' ? 'Revoir la stratégie d\'entrée' : 'Review entry strategy');
+      negatives.push(pt.reviewEntryStrategy);
     }
 
     if (positives.length === 0) {
-      positives.push(language === 'fr' ? 'Continuez à trader pour générer des insights' : 'Continue trading to generate insights');
+      positives.push(pt.continueTrading);
     }
     if (negatives.length === 0) {
-      negatives.push(language === 'fr' ? 'Aucun point d\'amélioration majeur détecté' : 'No major improvement points detected');
+      negatives.push(pt.noImprovementNeeded);
     }
 
     return { positives, negatives };
-  }, [trades, language]);
+  }, [trades, pt]);
 
   if (isLoading) {
     return (
@@ -344,14 +351,14 @@ const PsychologicalAnalysis: React.FC = () => {
                   <Target className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="font-display font-semibold text-foreground">
-                  {language === 'fr' ? 'Qualité d\'exécution' : 'Execution Quality'}
+                  {pt.executionQuality}
                 </h3>
               </div>
               <div className="flex justify-center mb-4">
                 <GaugeChart
                   value={executionQuality.overallScore}
                   max={100}
-                  label={language === 'fr' ? 'Score global' : 'Overall Score'}
+                  label={pt.overallScore}
                   size="md"
                   variant="primary"
                 />
@@ -361,7 +368,7 @@ const PsychologicalAnalysis: React.FC = () => {
                 <div className="p-3 rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-foreground">
-                      {language === 'fr' ? 'Timing d\'entrée' : 'Entry Timing'}
+                      {pt.entryTiming}
                     </span>
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded-full",
@@ -379,7 +386,7 @@ const PsychologicalAnalysis: React.FC = () => {
                 <div className="p-3 rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-foreground">
-                      {language === 'fr' ? 'Dimensionnement SL' : 'SL Sizing'}
+                      {pt.slSizing}
                     </span>
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded-full",
@@ -397,7 +404,7 @@ const PsychologicalAnalysis: React.FC = () => {
                 <div className="p-3 rounded-lg bg-muted/30">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-medium text-foreground">
-                      {language === 'fr' ? 'Optimisation TP' : 'TP Optimization'}
+                      {pt.tpOptimization}
                     </span>
                     <span className={cn(
                       "text-xs px-2 py-0.5 rounded-full",
@@ -431,14 +438,14 @@ const PsychologicalAnalysis: React.FC = () => {
                   )} />
                 </div>
                 <h3 className="font-display font-semibold text-foreground">
-                  {language === 'fr' ? 'Indice de fatigue' : 'Fatigue Index'}
+                  {pt.mentalFatigue}
                 </h3>
               </div>
               <div className="flex justify-center mb-4">
                 <GaugeChart
                   value={mentalFatigue.score}
                   max={100}
-                  label={language === 'fr' ? 'Fatigue' : 'Fatigue'}
+                  label={pt.currentFatigue}
                   size="md"
                   variant={mentalFatigue.level === 'critical' || mentalFatigue.level === 'high' ? 'loss' : 'primary'}
                 />
