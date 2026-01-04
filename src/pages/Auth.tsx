@@ -200,37 +200,29 @@ const Auth: React.FC = () => {
           : 'If an account exists with this email, you will receive a reset link.');
         setIsForgotPassword(false);
       } else if (isLogin) {
-        // NEW FLOW: Send login confirmation email instead of direct login
-        const startTime = Date.now();
+        // Direct login flow
+        const { error } = await signIn(email, password);
         
-        const { data, error } = await supabase.functions.invoke('auth-send-login-confirmation', {
-          body: {
-            email,
-            password,
-            language,
-            userAgent: navigator.userAgent
+        if (error) {
+          // Check for specific error types
+          if (error.message.includes('Invalid login credentials') || 
+              error.message.includes('invalid_credentials')) {
+            toast.error(language === 'fr' 
+              ? 'Email ou mot de passe incorrect.' 
+              : 'Invalid email or password.');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error(language === 'fr' 
+              ? 'Veuillez confirmer votre email avant de vous connecter.' 
+              : 'Please confirm your email before logging in.');
+          } else {
+            toast.error(t('authError'));
           }
-        });
-        
-        const elapsed = Date.now() - startTime;
-        const minDelay = 500;
-        if (elapsed < minDelay) {
-          await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
-        }
-        
-        if (error || !data?.success) {
-          // Generic error message - don't reveal details
-          toast.error(t('authError'));
         } else {
-          // Show email sent confirmation screen
-          setAuthStep('email_sent');
-          setResendCooldown(60); // 60 seconds before can resend
-          toast.success(language === 'fr'
-            ? 'Un email de confirmation a été envoyé.'
-            : 'A confirmation email has been sent.');
+          toast.success(language === 'fr' ? 'Connexion réussie!' : 'Login successful!');
+          navigate('/dashboard');
         }
       } else {
-        // SIGNUP FLOW
+        // SIGNUP FLOW - with auto-confirm enabled, user is logged in immediately
         const emailValidation = await validateEmailAddress(email, false);
         if (!emailValidation.valid) {
           toast.error(emailValidation.message || (language === 'fr'
@@ -240,32 +232,22 @@ const Auth: React.FC = () => {
           return;
         }
 
-        const startTime = Date.now();
         const { error } = await signUp(email, password, nickname);
-        const elapsed = Date.now() - startTime;
-        const minDelay = 500;
-        
-        if (elapsed < minDelay) {
-          await new Promise(resolve => setTimeout(resolve, minDelay - elapsed));
-        }
         
         if (error) {
           if (error.message.includes('User already registered') || 
               error.message.includes('already been registered')) {
-            // Show confirmation screen anyway to prevent enumeration
-            setAuthStep('confirm_email');
-            toast.success(language === 'fr'
-              ? 'Si cet email n\'est pas déjà enregistré, vous recevrez un email de confirmation.'
-              : 'If this email is not already registered, you will receive a confirmation email.');
+            toast.error(language === 'fr'
+              ? 'Cet email est déjà enregistré. Essayez de vous connecter.'
+              : 'This email is already registered. Try logging in.');
           } else {
             toast.error(t('authError'));
           }
         } else {
-          // Show confirmation screen
-          setAuthStep('confirm_email');
           toast.success(language === 'fr'
-            ? 'Un email de confirmation a été envoyé à votre adresse.'
-            : 'A confirmation email has been sent to your address.');
+            ? 'Compte créé avec succès!'
+            : 'Account created successfully!');
+          navigate('/dashboard');
         }
       }
     } catch (error) {
