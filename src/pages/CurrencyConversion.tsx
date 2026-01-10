@@ -152,7 +152,7 @@ const CurrencyConversion: React.FC = () => {
         const { rates: cachedRates, priceChanges: cachedChanges, timestamp } = JSON.parse(cached);
         const cacheAge = Date.now() - timestamp;
         
-        if (cacheAge < CACHE_DURATION) {
+        if (cacheAge < CACHE_DURATION && Object.keys(cachedRates).length > 5) {
           setRates(cachedRates);
           setPriceChanges(cachedChanges || {});
           setLastUpdated(new Date(timestamp));
@@ -162,6 +162,8 @@ const CurrencyConversion: React.FC = () => {
       }
 
       let fiatRates: Record<string, number> = { USD: 1 };
+      
+      // Fetch fiat rates
       try {
         const fiatResponse = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json');
         if (fiatResponse.ok) {
@@ -180,11 +182,18 @@ const CurrencyConversion: React.FC = () => {
             });
           }
         }
-      } catch {
-        console.log('Fiat API failed, using fallback');
+      } catch (e) {
+        console.log('Fiat API failed, using fallback:', e);
+        // Add fallback rates
+        fiatRates = {
+          USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149.5, CHF: 0.88,
+          CAD: 1.36, AUD: 1.53, NZD: 1.64, CNY: 7.24, HKD: 7.82,
+          SGD: 1.34, XAF: 603.5, XOF: 603.5, ZAR: 18.5, NGN: 1550,
+        };
       }
 
-      let cryptoRates: Record<string, number> = {};
+      // Fetch crypto rates  
+      let cryptoPricesInUsd: Record<string, number> = {};
       let changes: Record<string, number> = {};
       
       try {
@@ -206,23 +215,36 @@ const CurrencyConversion: React.FC = () => {
           Object.entries(cryptoData).forEach(([id, data]: [string, any]) => {
             const code = idToCode[id];
             if (code && data.usd) {
-              cryptoRates[code] = data.usd;
+              cryptoPricesInUsd[code] = data.usd;
               if (data.usd_24h_change !== undefined) {
                 changes[code] = data.usd_24h_change;
               }
             }
           });
         }
-      } catch {
-        console.log('Crypto API failed');
+      } catch (e) {
+        console.log('Crypto API failed, using fallback:', e);
+        // Add fallback crypto prices in USD
+        cryptoPricesInUsd = {
+          BTC: 97000, ETH: 3400, USDT: 1, USDC: 1,
+          BNB: 710, SOL: 200, XRP: 2.3, ADA: 1.0,
+          DOGE: 0.35, LTC: 105, DOT: 7.5, AVAX: 40,
+          LINK: 22, SHIB: 0.000022, TON: 5.5, NEAR: 5.2
+        };
       }
 
+      // Build final rates object
+      // All rates are "1 USD = X units"
       const allRates: Record<string, number> = { ...fiatRates };
       
-      Object.entries(cryptoRates).forEach(([code, usdPrice]) => {
-        allRates[code] = 1 / usdPrice;
+      // For crypto: 1 USD = 1/price crypto units
+      Object.entries(cryptoPricesInUsd).forEach(([code, usdPrice]) => {
+        if (usdPrice > 0) {
+          allRates[code] = 1 / usdPrice;
+        }
       });
 
+      // Cache the results
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         rates: allRates,
         priceChanges: changes,
@@ -235,6 +257,7 @@ const CurrencyConversion: React.FC = () => {
     } catch (err) {
       console.error('Rate fetch error:', err);
       
+      // Try to use cached data
       const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
         const { rates: cachedRates, priceChanges: cachedChanges, timestamp } = JSON.parse(cached);
@@ -265,26 +288,48 @@ const CurrencyConversion: React.FC = () => {
 
   // Convert amount
   const convertAmount = useCallback((amount: number, fromCode: string, toCode: string): number => {
+    if (amount === 0 || !amount) return 0;
+    if (fromCode === toCode) return amount;
+    
+    const fromAsset = getAsset(fromCode);
+    const toAsset = getAsset(toCode);
+    
+    // Get the rates - rates are stored as "1 USD = X units"
     const fromRate = rates[fromCode];
     const toRate = rates[toCode];
     
-    // Check if we have valid rates
-    if (fromRate === undefined || toRate === undefined || fromRate === 0) {
+    // Debug - if rates are missing, return 0
+    if (fromRate === undefined || toRate === undefined) {
+      console.log('Missing rates:', { fromCode, fromRate, toCode, toRate });
       return 0;
     }
     
-    // All rates are stored as "1 USD = X units of currency"
-    // For fiat: rates[EUR] = 0.92 means 1 USD = 0.92 EUR
-    // For crypto: rates[BTC] = 0.000015 means 1 USD = 0.000015 BTC (i.e., 1/price in USD)
+    // For fiat: rates[EUR] = 0.92 means 1 USD = 0.92 EUR, so EUR in USD = 1/0.92
+    // For crypto: rates[BTC] = 0.000015 means 1 USD = 0.000015 BTC
     
-    // Convert from source currency to USD first
-    const amountInUsd = amount / fromRate;
+    let amountInUsd: number;
     
-    // Then convert from USD to target currency
-    const result = amountInUsd * toRate;
+    // Convert source to USD
+    if (fromAsset?.type === 'crypto') {
+      // For crypto, rate is 1/price, so to get USD: amount / rate = amount * price
+      amountInUsd = fromRate > 0 ? amount / fromRate : 0;
+    } else {
+      // For fiat, rate is direct (1 USD = X units), so USD = amount / rate
+      amountInUsd = fromRate > 0 ? amount / fromRate : 0;
+    }
+    
+    // Convert USD to target
+    let result: number;
+    if (toAsset?.type === 'crypto') {
+      // For crypto, multiply by rate (which is 1/price)
+      result = amountInUsd * toRate;
+    } else {
+      // For fiat, multiply by rate
+      result = amountInUsd * toRate;
+    }
     
     return result;
-  }, [rates]);
+  }, [rates, getAsset]);
 
   // Format number with proper decimals and spacing
   const formatNumber = useCallback((num: number, decimals: number = 4): string => {
