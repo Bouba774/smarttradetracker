@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
@@ -26,6 +27,7 @@ import {
   Loader2,
   CalendarIcon,
   Save,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -58,6 +60,7 @@ const Journal: React.FC = () => {
   const [strengths, setStrengths] = useState('');
   const [rating, setRating] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   // Editing states
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -199,39 +202,48 @@ const Journal: React.FC = () => {
         </div>
       </div>
 
-      {/* Calendar Section */}
-      <div className="glass-card p-6 animate-fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <CalendarIcon className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-display font-semibold text-foreground">
-              {language === 'fr' ? 'Sélectionner une date' : 'Select a date'}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {format(selectedDate, 'EEEE d MMMM yyyy', { locale })}
-            </p>
-          </div>
-        </div>
-        
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={(date) => date && setSelectedDate(date)}
-          locale={locale}
-          className="rounded-lg border border-border mx-auto pointer-events-auto"
-          modifiers={{
-            hasEntry: datesWithEntries,
-          }}
-          modifiersStyles={{
-            hasEntry: {
-              backgroundColor: 'hsl(var(--primary) / 0.2)',
-              fontWeight: 'bold',
-            },
-          }}
-        />
-      </div>
+      {/* Calendar Section - Collapsible */}
+      <Collapsible open={isCalendarOpen} onOpenChange={setIsCalendarOpen} className="glass-card p-4">
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <CalendarIcon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-display font-semibold text-foreground">
+                  {language === 'fr' ? 'Sélectionner une date' : 'Select a date'}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {format(selectedDate, 'EEEE d MMMM yyyy', { locale })}
+                </p>
+              </div>
+            </div>
+            <ChevronDown className={cn(
+              "w-5 h-5 text-muted-foreground transition-transform",
+              isCalendarOpen && "rotate-180"
+            )} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => date && setSelectedDate(date)}
+            locale={locale}
+            className="rounded-lg mx-auto pointer-events-auto"
+            modifiers={{
+              hasEntry: datesWithEntries,
+            }}
+            modifiersStyles={{
+              hasEntry: {
+                backgroundColor: 'hsl(var(--primary) / 0.2)',
+                fontWeight: 'bold',
+              },
+            }}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pre-Market Checklist */}

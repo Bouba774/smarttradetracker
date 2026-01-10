@@ -16,7 +16,23 @@ export const useCurrency = () => {
     return convert(amount, BASE_CURRENCY, currency);
   }, [convert, currency]);
 
-  // Format amount with proper currency formatting
+  // Get currency symbol
+  const currencySymbol = useMemo((): string => {
+    try {
+      const formatter = new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: currency,
+        currencyDisplay: 'narrowSymbol',
+      });
+      const parts = formatter.formatToParts(0);
+      const symbolPart = parts.find(p => p.type === 'currency');
+      return symbolPart?.value || currency;
+    } catch {
+      return currency;
+    }
+  }, [currency]);
+
+  // Format amount with proper currency formatting - using symbol only
   const formatAmount = useCallback((amount: number | null | undefined, showSign = false, convertValue = true): string => {
     if (amount === null || amount === undefined) return '-';
     
@@ -24,18 +40,18 @@ export const useCurrency = () => {
     const displayAmount = convertValue ? convertFromBase(amount) : amount;
     
     const formatted = new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: currency,
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(Math.abs(displayAmount));
 
+    const result = `${formatted} ${currencySymbol}`;
+
     if (showSign && displayAmount !== 0) {
-      return displayAmount > 0 ? `+${formatted}` : `-${formatted}`;
+      return displayAmount > 0 ? `+${result}` : `-${result}`;
     }
     
-    return displayAmount < 0 ? `-${formatted}` : formatted;
-  }, [currency, decimals, convertFromBase]);
+    return displayAmount < 0 ? `-${result}` : result;
+  }, [decimals, convertFromBase, currencySymbol]);
 
   // Format amount in short form (K, M)
   const formatAmountShort = useCallback((amount: number | null | undefined, showSign = false, convertValue = true): string => {
@@ -46,16 +62,15 @@ export const useCurrency = () => {
     let formatted: string;
 
     if (absAmount >= 1000000) {
-      formatted = `${(absAmount / 1000000).toFixed(1)}M ${currency}`;
+      formatted = `${(absAmount / 1000000).toFixed(1)}M ${currencySymbol}`;
     } else if (absAmount >= 1000) {
-      formatted = `${(absAmount / 1000).toFixed(1)}K ${currency}`;
+      formatted = `${(absAmount / 1000).toFixed(1)}K ${currencySymbol}`;
     } else {
-      formatted = new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: currency,
+      const numFormatted = new Intl.NumberFormat('fr-FR', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       }).format(absAmount);
+      formatted = `${numFormatted} ${currencySymbol}`;
     }
 
     if (showSign && displayAmount !== 0) {
@@ -63,23 +78,12 @@ export const useCurrency = () => {
     }
     
     return displayAmount < 0 ? `-${formatted}` : formatted;
-  }, [currency, decimals, convertFromBase]);
+  }, [decimals, convertFromBase, currencySymbol]);
 
-  // Get currency symbol
+  // Get currency symbol function for external use
   const getCurrencySymbol = useCallback((): string => {
-    try {
-      const formatter = new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: currency,
-        currencyDisplay: 'symbol',
-      });
-      const parts = formatter.formatToParts(0);
-      const symbolPart = parts.find(p => p.type === 'currency');
-      return symbolPart?.value || currency;
-    } catch {
-      return currency;
-    }
-  }, [currency]);
+    return currencySymbol;
+  }, [currencySymbol]);
 
   // Format raw number without currency symbol (for inputs, calculations display)
   const formatNumber = useCallback((amount: number | null | undefined, convertValue = true): string => {
