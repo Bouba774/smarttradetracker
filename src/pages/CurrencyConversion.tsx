@@ -99,6 +99,29 @@ const CRYPTOCURRENCIES: Asset[] = [
   { code: 'SHIB', name: 'Shiba Inu', nameFr: 'Shiba Inu', symbol: 'SHIB', decimals: 8, type: 'crypto', flag: '🐶' },
   { code: 'TON', name: 'Toncoin', nameFr: 'Toncoin', symbol: 'TON', decimals: 9, type: 'crypto', flag: '💠' },
   { code: 'NEAR', name: 'Near Protocol', nameFr: 'Near Protocol', symbol: 'NEAR', decimals: 8, type: 'crypto', flag: '🌐' },
+  { code: 'PEPE', name: 'Pepe', nameFr: 'Pepe', symbol: 'PEPE', decimals: 8, type: 'crypto', flag: '🐸' },
+  { code: 'FLOKI', name: 'Floki', nameFr: 'Floki', symbol: 'FLOKI', decimals: 8, type: 'crypto', flag: '🐕‍🦺' },
+  { code: 'ARB', name: 'Arbitrum', nameFr: 'Arbitrum', symbol: 'ARB', decimals: 8, type: 'crypto', flag: '🔵' },
+  { code: 'OP', name: 'Optimism', nameFr: 'Optimism', symbol: 'OP', decimals: 8, type: 'crypto', flag: '🔴' },
+  { code: 'APT', name: 'Aptos', nameFr: 'Aptos', symbol: 'APT', decimals: 8, type: 'crypto', flag: '🟢' },
+  { code: 'SUI', name: 'Sui', nameFr: 'Sui', symbol: 'SUI', decimals: 9, type: 'crypto', flag: '💙' },
+  { code: 'INJ', name: 'Injective', nameFr: 'Injective', symbol: 'INJ', decimals: 8, type: 'crypto', flag: '💉' },
+  { code: 'FTM', name: 'Fantom', nameFr: 'Fantom', symbol: 'FTM', decimals: 8, type: 'crypto', flag: '👻' },
+  { code: 'ATOM', name: 'Cosmos', nameFr: 'Cosmos', symbol: 'ATOM', decimals: 6, type: 'crypto', flag: '⚛️' },
+  { code: 'UNI', name: 'Uniswap', nameFr: 'Uniswap', symbol: 'UNI', decimals: 8, type: 'crypto', flag: '🦄' },
+  { code: 'AAVE', name: 'Aave', nameFr: 'Aave', symbol: 'AAVE', decimals: 8, type: 'crypto', flag: '👻' },
+  { code: 'MKR', name: 'Maker', nameFr: 'Maker', symbol: 'MKR', decimals: 8, type: 'crypto', flag: '🏭' },
+  { code: 'CRO', name: 'Cronos', nameFr: 'Cronos', symbol: 'CRO', decimals: 8, type: 'crypto', flag: '🦁' },
+  { code: 'ALGO', name: 'Algorand', nameFr: 'Algorand', symbol: 'ALGO', decimals: 6, type: 'crypto', flag: '🔷' },
+  { code: 'XLM', name: 'Stellar', nameFr: 'Stellar', symbol: 'XLM', decimals: 7, type: 'crypto', flag: '⭐' },
+  { code: 'VET', name: 'VeChain', nameFr: 'VeChain', symbol: 'VET', decimals: 8, type: 'crypto', flag: '✔️' },
+  { code: 'FIL', name: 'Filecoin', nameFr: 'Filecoin', symbol: 'FIL', decimals: 8, type: 'crypto', flag: '📁' },
+  { code: 'ICP', name: 'Internet Computer', nameFr: 'Internet Computer', symbol: 'ICP', decimals: 8, type: 'crypto', flag: '🖥️' },
+  { code: 'RENDER', name: 'Render', nameFr: 'Render', symbol: 'RENDER', decimals: 8, type: 'crypto', flag: '🎨' },
+  { code: 'GRT', name: 'The Graph', nameFr: 'The Graph', symbol: 'GRT', decimals: 8, type: 'crypto', flag: '📊' },
+  { code: 'IMX', name: 'Immutable X', nameFr: 'Immutable X', symbol: 'IMX', decimals: 8, type: 'crypto', flag: '🎮' },
+  { code: 'WIF', name: 'Dogwifhat', nameFr: 'Dogwifhat', symbol: 'WIF', decimals: 8, type: 'crypto', flag: '🎩' },
+  { code: 'BONK', name: 'Bonk', nameFr: 'Bonk', symbol: 'BONK', decimals: 8, type: 'crypto', flag: '🦴' },
 ];
 
 const ALL_ASSETS: Asset[] = [...FIAT_CURRENCIES, ...CRYPTOCURRENCIES];
@@ -255,7 +278,7 @@ const CurrencyConversion: React.FC = () => {
       let changes: Record<string, number> = {};
       
       try {
-        const cryptoIds = 'bitcoin,ethereum,tether,usd-coin,binancecoin,solana,ripple,cardano,dogecoin,tron,matic-network,litecoin,polkadot,avalanche-2,chainlink,shiba-inu,the-open-network,near';
+        const cryptoIds = 'bitcoin,ethereum,tether,usd-coin,binancecoin,solana,ripple,cardano,dogecoin,tron,matic-network,litecoin,polkadot,avalanche-2,chainlink,shiba-inu,the-open-network,near,pepe,floki,arbitrum,optimism,aptos,sui,injective-protocol,fantom,cosmos,uniswap,aave,maker,crypto-com-chain,algorand,stellar,vechain,filecoin,internet-computer,render-token,the-graph,immutable-x,dogwifcoin,bonk';
         const cryptoResponse = await fetch(
           `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoIds}&vs_currencies=usd&include_24hr_change=true`
         );
@@ -268,7 +291,13 @@ const CurrencyConversion: React.FC = () => {
             'binancecoin': 'BNB', 'solana': 'SOL', 'ripple': 'XRP', 'cardano': 'ADA',
             'dogecoin': 'DOGE', 'tron': 'TRX', 'matic-network': 'MATIC', 'litecoin': 'LTC',
             'polkadot': 'DOT', 'avalanche-2': 'AVAX', 'chainlink': 'LINK',
-            'shiba-inu': 'SHIB', 'the-open-network': 'TON', 'near': 'NEAR'
+            'shiba-inu': 'SHIB', 'the-open-network': 'TON', 'near': 'NEAR',
+            'pepe': 'PEPE', 'floki': 'FLOKI', 'arbitrum': 'ARB', 'optimism': 'OP',
+            'aptos': 'APT', 'sui': 'SUI', 'injective-protocol': 'INJ', 'fantom': 'FTM',
+            'cosmos': 'ATOM', 'uniswap': 'UNI', 'aave': 'AAVE', 'maker': 'MKR',
+            'crypto-com-chain': 'CRO', 'algorand': 'ALGO', 'stellar': 'XLM', 'vechain': 'VET',
+            'filecoin': 'FIL', 'internet-computer': 'ICP', 'render-token': 'RENDER',
+            'the-graph': 'GRT', 'immutable-x': 'IMX', 'dogwifcoin': 'WIF', 'bonk': 'BONK'
           };
 
           Object.entries(cryptoData).forEach(([id, data]: [string, any]) => {
@@ -289,7 +318,12 @@ const CurrencyConversion: React.FC = () => {
           BNB: 690, SOL: 200, XRP: 2.3, ADA: 1.0,
           DOGE: 0.35, TRX: 0.25, MATIC: 0.5, LTC: 100,
           DOT: 7.5, AVAX: 40, LINK: 23, SHIB: 0.000023,
-          TON: 5.5, NEAR: 5.2
+          TON: 5.5, NEAR: 5.2, PEPE: 0.00001, FLOKI: 0.00015,
+          ARB: 1.2, OP: 2.5, APT: 9, SUI: 4, INJ: 25,
+          FTM: 0.8, ATOM: 10, UNI: 12, AAVE: 350, MKR: 2000,
+          CRO: 0.12, ALGO: 0.2, XLM: 0.4, VET: 0.04,
+          FIL: 6, ICP: 12, RENDER: 8, GRT: 0.2,
+          IMX: 2, WIF: 2.5, BONK: 0.00003
         };
       }
 
