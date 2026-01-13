@@ -2,26 +2,42 @@ workflows:
   android-workflow:
     name: Smart Trade Tracker Android Build
     max_build_duration: 60
-    instance_type: mac_mini_m1
-    environment:
-      java: 17
-      android_signing:
-        - smart_trade_tracker_keystore
-      groups:
-        - google_play
-    scripts:
-      - name: Set executable permission
-        script: chmod +x ./gradlew
 
-      - name: Build APK
+    environment:
+      vars:
+        WEB_APP_URL: "https://smarttradetrackerstt.lovable.app"
+
+      android_signing:
+        - keystore_reference: smart_trade_tracker_keystore
+
+      groups:
+        - android_keystore
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+
+    scripts:
+      - name: Set up Android SDK
+        script: |
+          echo "Using Codemagic Android environment"
+
+      - name: Decode keystore
+        script: |
+          mkdir -p android/app/keystore
+          echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > android/app/keystore/smart_trade_tracker.jks
+
+      - name: Grant Gradle permission
+        script: |
+          chmod +x android/gradlew
+
+      - name: Build signed APK
         script: |
           cd android
           ./gradlew assembleRelease
-
-      - name: Build AAB
-        script: |
-          cd android
-          ./gradlew bundleRelease
 
     artifacts:
       - android/app/build/outputs/**/*.apk
@@ -31,3 +47,6 @@ workflows:
       email:
         recipients:
           - maximemoreau087@gmail.com
+        notify:
+          success: true
+          failure: true
