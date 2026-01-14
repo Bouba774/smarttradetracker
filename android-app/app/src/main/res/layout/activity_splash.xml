@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="#00F6FF"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView
+        android:layout_gravity="center"
+        android:src="@drawable/app_logo"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:contentDescription="Logo" />
+</FrameLayout>

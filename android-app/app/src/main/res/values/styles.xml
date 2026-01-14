@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.SmartTradeTracker" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="android:windowBackground">@color/white</item>
+    </style>
+
+    <style name="Theme.Splash" parent="Theme.SmartTradeTracker">
+        <item name="android:windowBackground">@color/neonBlue</item>
+    </style>
+</resources>
