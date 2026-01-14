@@ -30,4 +30,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - YOUR_EMAIL_HERE
+          - maximemoreau087@gmail.com
